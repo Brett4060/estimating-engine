@@ -1057,236 +1057,303 @@ function QuoteOutput({ calc, proj, comps, pricing, misc, margin }) {
   const commence = calc.contractValue * 0.50;
   const shipment = calc.contractValue * 0.35;
 
-  const buildQuoteJSON = () => {
-    const panels = [];
-    COMP_KEYS.forEach(k => {
-      const types = comps[k];
-      TYPE_LABELS.forEach((lbl, i) => {
-        const td = types[i];
-        const qty = Number(td.qty) || 0;
-        if (qty === 0) return;
-        const r = calcComponentType(k, td, pricing);
-        const specs = {};
-        if (COMP[k].dims) COMP[k].dims.forEach(d => { if (td[d.key]) specs[d.key] = `${td[d.key]} ${d.unit}`; });
-        if (td.epsDensity && pricing.EPS[td.epsDensity]) specs.epsDensity = pricing.EPS[td.epsDensity].label;
-        if (td.insideStuds && td.insideStudType && pricing.TUBING[td.insideStudType]) specs.insideStudType = pricing.TUBING[td.insideStudType].label;
-        panels.push({ label: td.label || `${COMP[k].label} ${lbl}`, componentType: COMP[k].label, type: lbl, qty, specs, sf: r.sf });
-      });
-    });
-    return {
-      quote: {
-        meta: { quoteId, date: proj.date || new Date().toISOString().slice(0, 10), version: "1.0" },
-        seller: { company: "Guardian Structural Technologies LLC", address: "4640 Manufacturing Avenue", city: "Cleveland", state: "OH", zip: "44135", phone: "(216) 898-5600" },
-        client: { company: proj.ownerName || "", contact: proj.ownerContact || "", phone: proj.ownerPhone || "", email: proj.ownerEmail || "" },
-        project: { name: proj.name || "", location: proj.location || "", architect: proj.archFirm || "" },
-        scopeOfWork: { panels },
-        pricing: {
-          totalAmount: calc.contractValue,
-          paymentSchedule: [
-            { milestone: "Upon execution of contract", percent: 15, amount: deposit },
-            { milestone: "Upon notice to commence manufacturing", percent: 50, amount: commence },
-            { milestone: "Prior to shipment", percent: 35, amount: shipment },
-          ],
-        },
-        termsAndConditions: {
-          exclusions: [
-            "Window and door units (openings provided, units by others)",
-            "Site foundations (by others)",
-            "Field assembly labor (by others)",
-            "Second top plate (by others)",
-          ],
-          notes: ["Price subject to final drawings approval"],
-        },
-      },
-    };
+  const QS = {
+    navy: "#1C211B", navyMid: "#2A302A",
+    accent: "#06A451", accentLt: "#33C47A",
+    rule: "#D0D8E0", bg: "#F4F6F8", white: "#FFFFFF",
+    text: "#1C2B3A", muted: "#6B7F8F",
+    fontHead: "'Barlow Semi Condensed', 'Segoe UI', system-ui, sans-serif",
+    fontBody: "'Barlow', 'Segoe UI', system-ui, sans-serif",
   };
 
-  const handleDownloadJSON = () => {
-    const data = buildQuoteJSON();
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${quoteId}-quote.json`;
-    a.click();
-    URL.revokeObjectURL(url);
+  const fmtCur = (v) => {
+    const n = Number(v) || 0;
+    return "$" + n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   };
+
+  /* Collect panel line items grouped by component */
+  const panelRows = [];
+  COMP_KEYS.forEach(k => {
+    const types = comps[k];
+    const compRows = [];
+    TYPE_LABELS.forEach((lbl, i) => {
+      const td = types[i];
+      const qty = Number(td.qty) || 0;
+      if (qty === 0) return;
+      const r = calcComponentType(k, td, pricing);
+      const specs = [];
+      if (COMP[k].dims) COMP[k].dims.forEach(d => { if (td[d.key]) specs.push(`${d.label}: ${td[d.key]} ${d.unit}`); });
+      if (td.epsDensity && pricing.EPS?.[td.epsDensity]) specs.push(`EPS: ${pricing.EPS[td.epsDensity].label}`);
+      if (td.insideStuds && td.insideStudType && pricing.TUBING?.[td.insideStudType]) specs.push(`Inside Stud: ${pricing.TUBING[td.insideStudType].label}`);
+      compRows.push({ label: td.label || `${COMP[k].label} ${lbl}`, compLabel: COMP[k].label, qty, specs, sf: r.sf, key: `${k}-${i}` });
+    });
+    if (compRows.length > 0) panelRows.push({ compKey: k, compLabel: COMP[k].label, rows: compRows });
+  });
+
+  const sectionHead = (text) => ({
+    fontFamily: QS.fontHead, fontSize: 13, fontWeight: 700, letterSpacing: 1.5,
+    textTransform: "uppercase", color: QS.accent, marginBottom: 10, paddingBottom: 6,
+    borderBottom: `2px solid ${QS.accent}`,
+  });
 
   return (
-    <div className="p-6 max-w-4xl mx-auto space-y-6">
-      <style>{`@media print { .no-print { display: none !important; } }`}</style>
+    <div style={{ maxWidth: 900, margin: "0 auto", padding: 24, fontFamily: QS.fontBody, color: QS.text }}>
+      <style>{`@media print { .no-print { display: none !important; } body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }`}</style>
 
       {/* Toggle / Action Buttons */}
-      <div className="flex gap-3 no-print">
+      <div className="no-print" style={{ display: "flex", gap: 10, marginBottom: 20 }}>
         <button
           onClick={() => setView("quote")}
-          className={`px-4 py-2 text-sm rounded font-medium ${view === "quote" ? "bg-emerald-600 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
+          style={{ padding: "8px 18px", fontSize: 13, fontWeight: 600, borderRadius: 4, border: "none", cursor: "pointer",
+            background: view === "quote" ? QS.accent : "#E2E8F0", color: view === "quote" ? "#fff" : "#475569" }}
         >Customer Quote</button>
         <button
           onClick={() => setView("internal")}
-          className={`px-4 py-2 text-sm rounded font-medium ${view === "internal" ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
-        >Internal Breakdown</button>
+          style={{ padding: "8px 18px", fontSize: 13, fontWeight: 600, borderRadius: 4, border: "none", cursor: "pointer",
+            background: view === "internal" ? "#2563EB" : "#E2E8F0", color: view === "internal" ? "#fff" : "#475569" }}
+        >Internal View</button>
         {view === "quote" && (
-          <>
-            <button onClick={() => window.print()} className="ml-auto px-4 py-2 text-sm bg-slate-700 text-white rounded hover:bg-slate-800">Print Quote</button>
-            <button onClick={handleDownloadJSON} className="px-4 py-2 text-sm bg-slate-200 text-slate-700 rounded hover:bg-slate-300">Download JSON</button>
-          </>
+          <button onClick={() => window.print()} className="no-print"
+            style={{ marginLeft: "auto", padding: "8px 18px", fontSize: 13, fontWeight: 600, borderRadius: 4, border: "none", cursor: "pointer",
+              background: QS.navy, color: "#fff" }}
+          >Print Quote</button>
         )}
       </div>
 
       {/* ============ CUSTOMER QUOTE VIEW ============ */}
       {view === "quote" && (
-        <div className="bg-white border border-slate-200 rounded-lg p-8 space-y-8" style={{ fontFamily: "Georgia, serif" }}>
+        <div style={{ background: QS.white, borderRadius: 6, overflow: "hidden", boxShadow: "0 2px 12px rgba(0,0,0,0.08)" }}>
 
-          {/* Header */}
-          <div className="flex items-center justify-between border-b-2 border-emerald-700 pb-6">
-            <div className="flex items-center gap-4">
-              <img src={GST_LOGO} alt="GST" className="h-16 w-16 rounded" />
+          {/* ── Dark Navy Header ── */}
+          <div style={{ background: QS.navy, padding: "28px 40px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+              <img src={GST_LOGO} alt="GST" style={{ width: 60, height: 60, borderRadius: 6 }} />
               <div>
-                <h1 className="text-xl font-bold text-emerald-800 tracking-wide">Guardian Structural Technologies LLC</h1>
-                <p className="text-sm text-slate-500">4640 Manufacturing Avenue, Cleveland, OH 44135</p>
-                <p className="text-sm text-slate-500">(216) 898-5600</p>
+                <div style={{ fontFamily: QS.fontHead, fontSize: 20, fontWeight: 700, color: QS.white, letterSpacing: 1 }}>Guardian Structural Technologies LLC</div>
+                <div style={{ fontFamily: QS.fontHead, fontSize: 13, color: QS.accentLt, fontWeight: 600, letterSpacing: 2, textTransform: "uppercase", marginTop: 2 }}>SHIELD Panel Systems</div>
+                <div style={{ fontSize: 12, color: "#A0AEC0", marginTop: 4 }}>4640 Manufacturing Avenue, Cleveland, OH 44135 &nbsp;|&nbsp; (216) 898-5600</div>
               </div>
             </div>
-            <div className="text-right">
-              <h2 className="text-2xl font-bold text-slate-800 tracking-wider">PROPOSAL</h2>
+            <div style={{ textAlign: "right" }}>
+              <div style={{ fontFamily: QS.fontHead, fontSize: 28, fontWeight: 700, color: QS.white, letterSpacing: 3, textTransform: "uppercase" }}>PROPOSAL</div>
             </div>
           </div>
 
-          {/* Quote Meta + Client + Project */}
-          <div className="grid grid-cols-2 gap-8 text-sm">
-            <div className="space-y-4">
-              <div>
-                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Quote Details</h3>
-                <div className="space-y-1">
-                  <div><span className="text-slate-500 w-24 inline-block">Quote ID:</span> <span className="font-semibold">{quoteId}</span></div>
-                  <div><span className="text-slate-500 w-24 inline-block">Date:</span> <span className="font-semibold">{proj.date || "—"}</span></div>
-                  <div><span className="text-slate-500 w-24 inline-block">Salesperson:</span> <span className="font-semibold">{proj.salesperson || "—"}</span></div>
-                </div>
+          {/* ── Green Accent Bar ── */}
+          <div style={{ height: 5, background: `linear-gradient(90deg, ${QS.accent}, ${QS.accentLt})` }} />
+
+          {/* ── Meta Strip ── */}
+          <div style={{ background: QS.navyMid, padding: "12px 40px", display: "flex", gap: 40 }}>
+            {[
+              { label: "Proposal No.", value: quoteId },
+              { label: "Date", value: proj.date || new Date().toISOString().slice(0, 10) },
+              { label: "Status", value: "Draft" },
+            ].map((m, i) => (
+              <div key={i}>
+                <div style={{ fontSize: 10, color: "#8B9DAF", textTransform: "uppercase", letterSpacing: 1, fontWeight: 600 }}>{m.label}</div>
+                <div style={{ fontSize: 14, color: QS.white, fontWeight: 600, marginTop: 2 }}>{m.value}</div>
               </div>
-              <div>
-                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Client</h3>
-                <div className="space-y-1">
-                  {proj.ownerName && <div className="font-semibold">{proj.ownerName}</div>}
-                  {proj.ownerContact && <div className="text-slate-600">Attn: {proj.ownerContact}</div>}
-                  {proj.ownerPhone && <div className="text-slate-600">{proj.ownerPhone}</div>}
-                  {proj.ownerEmail && <div className="text-slate-600">{proj.ownerEmail}</div>}
-                  {!proj.ownerName && !proj.ownerContact && <div className="text-slate-400 italic">No client info provided</div>}
-                </div>
-              </div>
-            </div>
-            <div>
-              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Project</h3>
-              <div className="space-y-1">
-                <div><span className="text-slate-500">Project:</span> <span className="font-semibold">{proj.name || "—"}</span></div>
-                <div><span className="text-slate-500">Location:</span> <span className="font-semibold">{proj.location || "—"}</span></div>
-                {proj.archFirm && <div><span className="text-slate-500">Architect:</span> <span className="font-semibold">{proj.archFirm}</span></div>}
-              </div>
-            </div>
+            ))}
           </div>
 
-          {/* Scope of Work — Panels Table */}
-          <div>
-            <h3 className="text-sm font-bold text-emerald-800 uppercase tracking-wider border-b border-emerald-200 pb-1 mb-3">Scope of Work — Panel Schedule</h3>
-            <table className="w-full text-sm border-collapse">
+          {/* ── Body Content ── */}
+          <div style={{ padding: "32px 40px" }}>
+
+            {/* Two-column info cards */}
+            <div style={{ display: "flex", gap: 24, marginBottom: 32 }}>
+              {/* Submitted To */}
+              <div style={{ flex: 1, background: QS.bg, borderRadius: 6, padding: "20px 24px", border: `1px solid ${QS.rule}` }}>
+                <div style={{ fontSize: 10, color: QS.muted, textTransform: "uppercase", letterSpacing: 1.5, fontWeight: 700, marginBottom: 10 }}>Submitted To</div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: QS.text, marginBottom: 4 }}>{proj.ownerName || "—"}</div>
+                {proj.ownerContact && <div style={{ fontSize: 13, color: QS.muted }}>Attn: {proj.ownerContact}</div>}
+                {proj.ownerPhone && <div style={{ fontSize: 13, color: QS.muted }}>{proj.ownerPhone}</div>}
+                {proj.ownerEmail && <div style={{ fontSize: 13, color: QS.muted }}>{proj.ownerEmail}</div>}
+              </div>
+              {/* Project */}
+              <div style={{ flex: 1, background: QS.bg, borderRadius: 6, padding: "20px 24px", border: `1px solid ${QS.rule}` }}>
+                <div style={{ fontSize: 10, color: QS.muted, textTransform: "uppercase", letterSpacing: 1.5, fontWeight: 700, marginBottom: 10 }}>Project</div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: QS.text, marginBottom: 4 }}>{proj.name || "—"}</div>
+                <div style={{ fontSize: 13, color: QS.muted }}>{proj.location || "—"}</div>
+                {proj.archFirm && <div style={{ fontSize: 13, color: QS.muted, marginTop: 4 }}>Architect: {proj.archFirm}</div>}
+              </div>
+            </div>
+
+            {/* ── Scope of Work ── */}
+            <div style={sectionHead()}>Scope of Work</div>
+
+            {/* Engineering */}
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: QS.text, marginBottom: 6 }}>Engineering</div>
+              <div style={{ fontSize: 12, color: QS.muted, lineHeight: 1.6, paddingLeft: 12 }}>
+                SHIELD Panel structural engineering, shop drawings, and panel layout design per applicable building codes.
+              </div>
+            </div>
+
+            {/* Panel Fabrication */}
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: QS.text, marginBottom: 6 }}>Panel Fabrication</div>
+              <div style={{ fontSize: 12, color: QS.muted, lineHeight: 1.6, paddingLeft: 12, marginBottom: 12 }}>
+                Factory-fabricated SHIELD Panels per engineered shop drawings, including EPS insulation cores and steel stud framing.
+              </div>
+            </div>
+
+            {/* ── Line Items Table ── */}
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, marginBottom: 24 }}>
               <thead>
-                <tr className="bg-slate-50 text-xs text-slate-500 uppercase">
-                  <th className="text-left py-2 px-2 border-b">Panel</th>
-                  <th className="text-left py-2 px-2 border-b">Type</th>
-                  <th className="text-right py-2 px-2 border-b">Qty</th>
-                  <th className="text-left py-2 px-2 border-b">Key Specifications</th>
-                  <th className="text-right py-2 px-2 border-b">SF</th>
+                <tr style={{ background: QS.navy }}>
+                  {["Description", "Qty", "SF"].map((h, i) => (
+                    <th key={i} style={{ color: QS.white, fontFamily: QS.fontHead, fontWeight: 600, fontSize: 11, letterSpacing: 1,
+                      textTransform: "uppercase", padding: "10px 12px", textAlign: i === 0 ? "left" : "right",
+                      borderBottom: `2px solid ${QS.accent}` }}>{h}</th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
-                {COMP_KEYS.map(k => {
-                  const types = comps[k];
-                  return TYPE_LABELS.map((lbl, i) => {
-                    const td = types[i];
-                    const qty = Number(td.qty) || 0;
-                    if (qty === 0) return null;
-                    const r = calcComponentType(k, td, pricing);
-                    const specs = [];
-                    if (COMP[k].dims) COMP[k].dims.forEach(d => { if (td[d.key]) specs.push(`${d.label}: ${td[d.key]} ${d.unit}`); });
-                    if (td.epsDensity && pricing.EPS[td.epsDensity]) specs.push(`EPS: ${pricing.EPS[td.epsDensity].label}`);
-                    if (td.insideStuds && td.insideStudType && pricing.TUBING[td.insideStudType]) specs.push(`Inside Stud: ${pricing.TUBING[td.insideStudType].label}`);
-                    return (
-                      <tr key={`${k}-${i}`} className="border-b border-slate-100">
-                        <td className="py-1.5 px-2 font-medium">{td.label || `${COMP[k].label} ${lbl}`}</td>
-                        <td className="py-1.5 px-2 text-slate-600">{COMP[k].label}</td>
-                        <td className="py-1.5 px-2 text-right font-mono">{qty}</td>
-                        <td className="py-1.5 px-2 text-xs text-slate-500">{specs.join(" | ") || "—"}</td>
-                        <td className="py-1.5 px-2 text-right font-mono">{r.sf.toLocaleString()}</td>
+                {panelRows.map((group, gi) => (
+                  <React.Fragment key={gi}>
+                    {/* Category row */}
+                    <tr>
+                      <td colSpan={3} style={{ padding: "10px 12px 4px", fontWeight: 700, fontSize: 12, color: QS.accent,
+                        borderBottom: `1px solid ${QS.rule}`, background: "#F8FAF8" }}>
+                        {group.compLabel}
+                      </td>
+                    </tr>
+                    {group.rows.map(row => (
+                      <tr key={row.key} style={{ borderBottom: `1px solid ${QS.rule}` }}>
+                        <td style={{ padding: "8px 12px 8px 24px" }}>
+                          <div style={{ fontWeight: 600, color: QS.text }}>{row.label}</div>
+                          {row.specs.length > 0 && (
+                            <div style={{ fontSize: 11, color: QS.muted, marginTop: 2 }}>{row.specs.join("  |  ")}</div>
+                          )}
+                        </td>
+                        <td style={{ padding: "8px 12px", textAlign: "right", fontWeight: 600 }}>{row.qty}</td>
+                        <td style={{ padding: "8px 12px", textAlign: "right", fontWeight: 600, fontFamily: "monospace" }}>{row.sf.toLocaleString()}</td>
                       </tr>
-                    );
-                  });
-                })}
-                <tr className="border-t-2 border-slate-300 font-bold">
-                  <td className="py-2 px-2" colSpan={4}>Total Square Footage</td>
-                  <td className="py-2 px-2 text-right font-mono">{calc.totalSF.toLocaleString()}</td>
+                    ))}
+                  </React.Fragment>
+                ))}
+                {/* Total SF row */}
+                <tr style={{ borderTop: `2px solid ${QS.navy}` }}>
+                  <td style={{ padding: "10px 12px", fontWeight: 700 }}>Total Square Footage</td>
+                  <td style={{ padding: "10px 12px", textAlign: "right" }}></td>
+                  <td style={{ padding: "10px 12px", textAlign: "right", fontWeight: 700, fontFamily: "monospace", fontSize: 13 }}>{calc.totalSF.toLocaleString()}</td>
                 </tr>
               </tbody>
             </table>
-          </div>
 
-          {/* Metal Accessories */}
-          <div>
-            <h3 className="text-sm font-bold text-emerald-800 uppercase tracking-wider border-b border-emerald-200 pb-1 mb-3">Metal Accessories Included</h3>
-            <ul className="list-disc list-inside text-sm text-slate-700 space-y-1 ml-2">
-              <li>Top and Bottom Angle or Track</li>
-              <li>Outside wall corners</li>
-              <li>Inside wall corners</li>
-              <li>Strapping for intersecting interior partitions</li>
-              <li>Sealing spray foam</li>
-              <li>Fasteners and assembly accessories</li>
-            </ul>
-          </div>
-
-          {/* Pricing */}
-          <div>
-            <h3 className="text-sm font-bold text-emerald-800 uppercase tracking-wider border-b border-emerald-200 pb-1 mb-3">Pricing</h3>
-            <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-5">
-              <div className="flex justify-between items-center mb-4">
-                <span className="text-lg font-bold text-slate-800">Total Contract Value</span>
-                <span className="text-2xl font-bold text-emerald-800 font-mono">{fmt(calc.contractValue)}</span>
+            {/* Metal Accessories */}
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: QS.text, marginBottom: 6 }}>Metal Accessories</div>
+              <div style={{ fontSize: 12, color: QS.muted, lineHeight: 1.8, paddingLeft: 12 }}>
+                {["Top and bottom angle or track", "Outside wall corners", "Inside wall corners",
+                  "Strapping for intersecting interior partitions", "Sealing spray foam", "Fasteners and assembly accessories"
+                ].map((item, i) => <div key={i}>- {item}</div>)}
               </div>
-              <div className="border-t border-emerald-200 pt-3">
-                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Payment Schedule</h4>
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between"><span>15% — Upon execution of contract</span><span className="font-mono font-semibold">{fmt(deposit)}</span></div>
-                  <div className="flex justify-between"><span>50% — Upon notice to commence manufacturing</span><span className="font-mono font-semibold">{fmt(commence)}</span></div>
-                  <div className="flex justify-between"><span>35% — Prior to shipment</span><span className="font-mono font-semibold">{fmt(shipment)}</span></div>
+            </div>
+
+            {/* Additional Services */}
+            <div style={{ marginBottom: 32 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: QS.text, marginBottom: 6 }}>Additional Services</div>
+              <div style={{ fontSize: 12, color: QS.muted, lineHeight: 1.8, paddingLeft: 12 }}>
+                - Delivery to job site<br />
+                - Technical support during field assembly
+              </div>
+            </div>
+
+            {/* ── Totals Block ── */}
+            <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 32 }}>
+              <div style={{ width: 320, background: QS.bg, borderRadius: 6, border: `1px solid ${QS.rule}`, overflow: "hidden" }}>
+                <div style={{ background: QS.navy, padding: "14px 20px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <span style={{ color: QS.white, fontFamily: QS.fontHead, fontWeight: 700, fontSize: 14, letterSpacing: 1, textTransform: "uppercase" }}>Total Contract Value</span>
+                  <span style={{ color: QS.accentLt, fontFamily: "monospace", fontWeight: 700, fontSize: 20 }}>{fmtCur(calc.contractValue)}</span>
                 </div>
               </div>
             </div>
-          </div>
 
-          {/* Terms & Conditions */}
-          <div>
-            <h3 className="text-sm font-bold text-emerald-800 uppercase tracking-wider border-b border-emerald-200 pb-1 mb-3">Terms &amp; Conditions</h3>
-            <div className="text-sm text-slate-700 space-y-3">
-              <div>
-                <h4 className="font-semibold text-slate-600 mb-1">Exclusions</h4>
-                <ul className="list-disc list-inside space-y-1 ml-2">
-                  <li>Window and door units (openings provided, units by others)</li>
-                  <li>Site foundations (by others)</li>
-                  <li>Field assembly labor (by others)</li>
-                  <li>Second top plate (by others)</li>
-                </ul>
+            {/* ── Payment Schedule ── */}
+            <div style={sectionHead()}>Payment Schedule</div>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, marginBottom: 12 }}>
+              <thead>
+                <tr style={{ background: QS.bg }}>
+                  {["Milestone", "%", "Amount"].map((h, i) => (
+                    <th key={i} style={{ padding: "8px 12px", textAlign: i === 0 ? "left" : "right", fontSize: 11, fontWeight: 700,
+                      color: QS.muted, textTransform: "uppercase", letterSpacing: 1, borderBottom: `1px solid ${QS.rule}` }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {[
+                  { milestone: "Upon execution of contract", pct: 15, amt: deposit },
+                  { milestone: "Upon notice to commence manufacturing", pct: 50, amt: commence },
+                  { milestone: "Prior to shipment", pct: 35, amt: shipment },
+                ].map((r, i) => (
+                  <tr key={i} style={{ borderBottom: `1px solid ${QS.rule}` }}>
+                    <td style={{ padding: "10px 12px", fontWeight: 500 }}>{r.milestone}</td>
+                    <td style={{ padding: "10px 12px", textAlign: "right", fontWeight: 700, color: QS.accent }}>{r.pct}%</td>
+                    <td style={{ padding: "10px 12px", textAlign: "right", fontFamily: "monospace", fontWeight: 600 }}>{fmtCur(r.amt)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            {/* Progress bar */}
+            <div style={{ display: "flex", height: 8, borderRadius: 4, overflow: "hidden", marginBottom: 32 }}>
+              <div style={{ width: "15%", background: QS.accent }} />
+              <div style={{ width: "50%", background: QS.accentLt }} />
+              <div style={{ width: "35%", background: "#A8E6C3" }} />
+            </div>
+
+            {/* ── Exclusions ── */}
+            <div style={sectionHead()}>Exclusions</div>
+            <div style={{ fontSize: 12, color: QS.muted, lineHeight: 1.8, paddingLeft: 12, marginBottom: 32 }}>
+              {[
+                "Window and door units (openings provided, units by others)",
+                "Site foundations (by others)",
+                "Field assembly labor (by others)",
+                "Second top plate (by others)",
+                "Interior / exterior finishes",
+                "Permits and inspections",
+              ].map((item, i) => <div key={i} style={{ paddingLeft: 8, textIndent: -8 }}>{"\u2014"} {item}</div>)}
+            </div>
+
+            {/* ── Terms & Conditions ── */}
+            <div style={sectionHead()}>Terms &amp; Conditions</div>
+            <div style={{ fontSize: 11, color: QS.muted, lineHeight: 1.7, marginBottom: 32 }}>
+              <p style={{ marginBottom: 8 }}>1. This proposal is valid for 30 days from the date shown above.</p>
+              <p style={{ marginBottom: 8 }}>2. Pricing is based on scope described herein. Changes to scope may result in price adjustment.</p>
+              <p style={{ marginBottom: 8 }}>3. Production lead time to be established upon receipt of signed contract and initial deposit.</p>
+              <p style={{ marginBottom: 8 }}>4. Guardian Structural Technologies LLC warrants panels against defects in materials and workmanship for a period of one (1) year from date of shipment.</p>
+              <p>5. Price subject to final drawings approval.</p>
+            </div>
+
+            {/* ── Signature Blocks ── */}
+            <div style={{ display: "flex", gap: 40, marginBottom: 32 }}>
+              {/* Guardian side */}
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: QS.text, textTransform: "uppercase", letterSpacing: 1, marginBottom: 16 }}>Guardian Structural Technologies LLC</div>
+                <div style={{ borderBottom: `1px solid ${QS.navy}`, marginBottom: 6, paddingBottom: 28 }} />
+                <div style={{ fontSize: 10, color: QS.muted }}>Authorized Signature</div>
+                <div style={{ borderBottom: `1px solid ${QS.rule}`, marginBottom: 6, marginTop: 16, paddingBottom: 28 }} />
+                <div style={{ fontSize: 10, color: QS.muted }}>Date</div>
               </div>
-              <div>
-                <h4 className="font-semibold text-slate-600 mb-1">Notes</h4>
-                <ul className="list-disc list-inside space-y-1 ml-2">
-                  <li>Price subject to final drawings approval</li>
-                </ul>
+              {/* Client side */}
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: QS.text, textTransform: "uppercase", letterSpacing: 1, marginBottom: 16 }}>{proj.ownerName || "Client"}</div>
+                <div style={{ borderBottom: `1px solid ${QS.navy}`, marginBottom: 6, paddingBottom: 28 }} />
+                <div style={{ fontSize: 10, color: QS.muted }}>Authorized Signature</div>
+                <div style={{ borderBottom: `1px solid ${QS.rule}`, marginBottom: 6, marginTop: 16, paddingBottom: 28 }} />
+                <div style={{ fontSize: 10, color: QS.muted }}>Date</div>
               </div>
             </div>
+
+          </div>{/* end body content padding */}
+
+          {/* ── Dark Footer ── */}
+          <div style={{ background: QS.navy, padding: "16px 40px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div style={{ fontSize: 11, color: "#8B9DAF" }}>Guardian Structural Technologies LLC</div>
+            <div style={{ fontSize: 11, color: "#8B9DAF" }}>4640 Manufacturing Avenue, Cleveland, OH 44135 &nbsp;|&nbsp; (216) 898-5600</div>
           </div>
 
-          {/* Footer */}
-          <div className="border-t-2 border-emerald-700 pt-4 text-center text-xs text-slate-400">
-            Guardian Structural Technologies LLC &mdash; 4640 Manufacturing Avenue, Cleveland, OH 44135 &mdash; (216) 898-5600
-          </div>
         </div>
       )}
 
