@@ -382,7 +382,7 @@ const fmtDec = (n) => "$" + (n || 0).toLocaleString("en-US", { minimumFractionDi
 // HELPERS
 // ═══════════════════════════════════════════════════════════════
 function makeTypeState(compDef) {
-  const s = { qty: "" };
+  const s = { qty: "", label: "" };
   compDef.dims.forEach(d => { s[d.key] = d.def ?? ""; });
   compDef.toggles.forEach(g => g.items.forEach(t => { s[t.key] = null; })); // null = unset
   compDef.selects.forEach(sel => { s[sel.key] = null; }); // null = not chosen
@@ -503,6 +503,12 @@ function TypeCard({ compKey, typeIdx, data, onChange, expanded, onToggleExpand, 
               onChange={e => upd("qty", e.target.value === "" ? "" : Number(e.target.value))}
               className="w-full border border-slate-300 rounded px-2 py-1 text-xs bg-sky-50 text-center" />
           </div>
+          <div className="w-32">
+            <input type="text" value={data.label || ""} placeholder="Label"
+              onClick={e => e.stopPropagation()}
+              onChange={e => upd("label", e.target.value)}
+              className="w-full border border-slate-300 rounded px-2 py-1 text-xs bg-sky-50" />
+          </div>
           {hasData && (
             <div className="flex gap-3 text-xs text-slate-500 truncate">
               {def.dims.slice(0, 3).map(d => {
@@ -564,7 +570,7 @@ function TypeCard({ compKey, typeIdx, data, onChange, expanded, onToggleExpand, 
               <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">{group.section}</div>
               <div className="grid grid-cols-4 gap-x-4 gap-y-0">
                 {group.items.map(t => (
-                  <Toggle key={t.key} label={t.label} value={!!data[t.key]} onChange={v => upd(t.key, v)} />
+                  <Toggle key={t.key} label={t.label} value={data[t.key]} onChange={v => upd(t.key, v)} />
                 ))}
               </div>
             </div>
@@ -648,6 +654,229 @@ function In({ label, value, onChange, type = "text", className = "" }) {
 // ═══════════════════════════════════════════════════════════════
 // QUOTE OUTPUT TAB
 // ═══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════
+// REVIEW SUMMARY — full estimate review before generating quote
+// ═══════════════════════════════════════════════════════════════
+function ReviewSummary({ comps, pricing, laborSettings, calc, proj, misc, margin, validation, onGoToComponent, onProceedToQuote, onOverrideToQuote }) {
+  const miscTotal = Object.values(misc).reduce((s, v) => s + (Number(v) || 0), 0);
+  const hasIssues = !validation.isValid;
+
+  return (
+    <div className="flex-1 overflow-y-auto p-6 max-w-5xl mx-auto space-y-4">
+      {/* Validation warning banner */}
+      {hasIssues && (
+        <div className="bg-amber-50 border-2 border-amber-300 rounded-lg p-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 bg-amber-400 rounded-full flex items-center justify-center text-white text-sm font-bold">!</div>
+            <div>
+              <span className="font-bold text-amber-800 text-sm">{validation.totalIssues} issue{validation.totalIssues !== 1 ? "s" : ""} found</span>
+              <p className="text-xs text-amber-600">Some fields are incomplete. Fix them for an accurate quote.</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Project info */}
+      <div className="bg-white border border-purple-200 rounded-lg p-4">
+        <div className="text-xs font-bold text-purple-700 uppercase tracking-wider mb-2 flex items-center gap-2">
+          <div className="w-5 h-5 bg-purple-600 rounded flex items-center justify-center text-white text-[10px] font-bold">P</div>
+          Project Information
+        </div>
+        <div className="grid grid-cols-3 gap-3 text-sm">
+          <div><span className="text-slate-400 text-xs">Project Name:</span> <span className="font-medium text-slate-800">{proj.name || "—"}</span></div>
+          <div><span className="text-slate-400 text-xs">Location:</span> <span className="font-medium text-slate-800">{proj.location || "—"}</span></div>
+          <div><span className="text-slate-400 text-xs">Date:</span> <span className="font-medium text-slate-800">{proj.date || "—"}</span></div>
+          <div><span className="text-slate-400 text-xs">Salesperson:</span> <span className="font-medium text-slate-800">{proj.salesperson || "—"}</span></div>
+          <div><span className="text-slate-400 text-xs">Proposal #:</span> <span className="font-medium text-slate-800">{proj.proposal || "—"}</span></div>
+          <div><span className="text-slate-400 text-xs">Sales Director:</span> <span className="font-medium text-slate-800">{proj.salesDir || "—"}</span></div>
+        </div>
+      </div>
+
+      {/* Components */}
+      {COMP_KEYS.map(compKey => {
+        const def = COMP[compKey];
+        const types = comps[compKey];
+        const activeTypes = types.map((td, i) => ({ td, i })).filter(({ td }) => (Number(td.qty) || 0) > 0);
+        if (activeTypes.length === 0) return null;
+
+        const compCalc = calc.byComp[compKey];
+        const issuesForComp = Object.keys(validation.allIssues).filter(k => k.startsWith(compKey + "-"));
+
+        return (
+          <div key={compKey} className="bg-white border border-slate-200 rounded-lg overflow-hidden">
+            <div className="bg-slate-50 px-4 py-2 border-b border-slate-200 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="w-6 h-6 bg-purple-600 text-white rounded flex items-center justify-center text-[10px] font-bold">{def.icon}</span>
+                <span className="font-bold text-sm text-slate-800">{def.label}</span>
+                {issuesForComp.length > 0 && (
+                  <span className="text-[10px] bg-amber-100 text-amber-700 border border-amber-300 rounded px-1.5 py-0.5 font-medium">
+                    {issuesForComp.reduce((s, k) => s + validation.allIssues[k].issues.length, 0)} issues
+                  </span>
+                )}
+              </div>
+              <span className="text-sm font-mono font-bold text-purple-700">{fmt(compCalc.total)}</span>
+            </div>
+
+            <div className="p-3 space-y-3">
+              {activeTypes.map(({ td, i }) => {
+                const typeCalc = calcComponentType(compKey, td, pricing);
+                const typeLab = calcComponentLabor(compKey, td, laborSettings);
+                const typeTotal = typeCalc.material + typeCalc.waste + typeLab;
+                const typeKey = `${compKey}-${i}`;
+                const typeIssues = validation.allIssues[typeKey];
+
+                return (
+                  <div key={i} className={`border rounded-lg p-3 ${typeIssues ? "border-amber-300 bg-amber-50/30" : "border-slate-100"}`}>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="w-5 h-5 bg-purple-100 text-purple-700 rounded flex items-center justify-center text-[10px] font-bold">{TYPE_LABELS[i]}</span>
+                        {td.label && <span className="font-bold text-sm text-slate-800">{td.label}</span>}
+                        <span className="text-xs text-slate-500">Qty: <span className="font-mono font-medium text-slate-700">{td.qty}</span></span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className="text-xs font-mono text-slate-500">{fmt(typeTotal)}</span>
+                        {typeIssues && (
+                          <button onClick={() => onGoToComponent(compKey, i)}
+                            className="text-[10px] bg-amber-500 hover:bg-amber-600 text-white px-2 py-0.5 rounded font-medium">
+                            Fix {typeIssues.issues.length} issue{typeIssues.issues.length !== 1 ? "s" : ""}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Dimensions */}
+                    <div className="mb-2">
+                      <div className="flex flex-wrap gap-2">
+                        {def.dims.map(d => {
+                          const v = td[d.key];
+                          const isMissing = v === "" || v === null || v === undefined;
+                          return (
+                            <span key={d.key} className={`text-xs px-2 py-0.5 rounded ${isMissing ? "bg-amber-100 text-amber-700 border border-amber-300" : "bg-slate-100 text-slate-600"}`}>
+                              {d.label}: <span className="font-mono font-medium">{isMissing ? "—" : `${v}${d.unit}`}</span>
+                            </span>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Toggles */}
+                    <div className="mb-2">
+                      <div className="flex flex-wrap gap-1.5">
+                        {def.toggles.map(g => g.items.map(t => {
+                          const v = td[t.key];
+                          const isUnset = v === null || v === undefined;
+                          return (
+                            <span key={t.key} className={`text-[10px] px-2 py-0.5 rounded font-medium ${
+                              isUnset ? "bg-amber-100 text-amber-700 border border-amber-300" :
+                              v ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"
+                            }`}>
+                              {g.section}: {t.label} {isUnset ? "?" : v ? "Yes" : "No"}
+                            </span>
+                          );
+                        }))}
+                      </div>
+                    </div>
+
+                    {/* Material selects */}
+                    <div className="mb-2">
+                      <div className="flex flex-wrap gap-1.5">
+                        {def.selects.map(sel => {
+                          const v = td[sel.key];
+                          const isUnset = v === null || v === undefined;
+                          const selLabel = isUnset ? "—" : (pricing[sel.opts]?.[v]?.label || `#${v}`);
+                          return (
+                            <span key={sel.key} className={`text-[10px] px-2 py-0.5 rounded ${
+                              isUnset ? "bg-amber-100 text-amber-700 border border-amber-300" : "bg-slate-100 text-slate-600"
+                            }`}>
+                              {sel.label}: <span className="font-medium">{selLabel}</span>
+                            </span>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Extras */}
+                    {def.extras && def.extras.length > 0 && (
+                      <div>
+                        <div className="flex flex-wrap gap-2">
+                          {def.extras.map(e => (
+                            <span key={e.key} className="text-[10px] px-2 py-0.5 rounded bg-slate-100 text-slate-600">
+                              {e.label}: <span className="font-mono font-medium">{td[e.key] || 0}</span>
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Cost breakdown for this type */}
+                    <div className="mt-2 pt-2 border-t border-slate-100 flex gap-4 text-[10px] text-slate-500">
+                      <span>Materials: <span className="font-mono font-medium text-slate-700">{fmt(typeCalc.material + typeCalc.waste)}</span></span>
+                      <span>Labor: <span className="font-mono font-medium text-slate-700">{fmt(typeLab)}</span></span>
+                      <span>SF: <span className="font-mono font-medium text-slate-700">{typeCalc.sf.toLocaleString()}</span></span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Component subtotal */}
+            <div className="bg-slate-50 px-4 py-2 border-t border-slate-200 flex justify-between text-xs">
+              <span className="text-slate-500">Subtotal — {def.label}</span>
+              <div className="flex gap-4">
+                <span className="text-slate-400">Mat: <span className="font-mono">{fmt(compCalc.material)}</span></span>
+                <span className="text-slate-400">Lab: <span className="font-mono">{fmt(compCalc.labor)}</span></span>
+                <span className="font-bold text-purple-700 font-mono">{fmt(compCalc.total)}</span>
+              </div>
+            </div>
+          </div>
+        );
+      })}
+
+      {/* Financial summary */}
+      <div className="bg-white border border-purple-200 rounded-lg p-4">
+        <div className="text-xs font-bold text-purple-700 uppercase tracking-wider mb-3">Financial Summary</div>
+        <div className="space-y-1.5 text-sm max-w-md">
+          <div className="flex justify-between"><span className="text-slate-500">Materials</span><span className="font-mono font-medium">{fmt(calc.totalMat)}</span></div>
+          <div className="flex justify-between"><span className="text-slate-500">Labor</span><span className="font-mono font-medium">{fmt(calc.totalLab)}</span></div>
+          <div className="flex justify-between"><span className="text-slate-500">Overhead</span><span className="font-mono font-medium">{fmt(calc.overhead)}</span></div>
+          <div className="flex justify-between"><span className="text-slate-500">Misc</span><span className="font-mono font-medium">{fmt(miscTotal)}</span></div>
+          <div className="flex justify-between border-t border-slate-200 pt-1.5"><span className="text-slate-500">Subtotal</span><span className="font-mono font-medium">{fmt(calc.subtotal)}</span></div>
+          <div className="flex justify-between"><span className="text-slate-500">Margin</span><span className="font-mono font-medium">{margin}%</span></div>
+          <div className="flex justify-between border-t border-purple-200 pt-1.5 text-base">
+            <span className="font-bold text-purple-800">Contract Value</span>
+            <span className="font-mono font-bold text-purple-700">{fmt(calc.contractValue)}</span>
+          </div>
+          <div className="flex justify-between text-xs"><span className="text-slate-400">Gross Profit</span><span className="font-mono text-slate-500">{fmt(calc.grossProfit)}</span></div>
+          {calc.costPerSF > 0 && (
+            <div className="flex justify-between text-xs"><span className="text-slate-400">Cost per SF</span><span className="font-mono text-slate-500">{fmtDec(calc.costPerSF)}/SF</span></div>
+          )}
+        </div>
+      </div>
+
+      {/* Action buttons */}
+      <div className="flex items-center gap-3 pb-6">
+        {hasIssues ? (
+          <>
+            <button onClick={onProceedToQuote} disabled
+              className="px-6 py-2.5 rounded text-sm font-medium bg-slate-300 text-slate-500 cursor-not-allowed">
+              Proceed to Quote
+            </button>
+            <button onClick={onOverrideToQuote}
+              className="px-4 py-2 text-xs text-slate-500 hover:text-slate-700 border border-slate-300 rounded">
+              Generate Quote Anyway (incomplete)
+            </button>
+          </>
+        ) : (
+          <button onClick={onProceedToQuote}
+            className="px-6 py-2.5 rounded text-sm font-bold bg-purple-600 hover:bg-purple-700 text-white shadow">
+            Proceed to Quote
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ═══════════════════════════════════════════════════════════════
 // REVIEW GATE — validates all components before allowing quote
 // ═══════════════════════════════════════════════════════════════
@@ -1520,6 +1749,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState("input");
   const [importReview, setImportReview] = useState(null); // { result, fileName }
   const [quoteOverride, setQuoteOverride] = useState(false);
+  const [reviewedOnce, setReviewedOnce] = useState(false);
   const [activeComp, setActiveComp] = useState("walls");
   const [expandedTypes, setExpandedTypes] = useState({});
   const [pricing, setPricing] = useState(() => clonePricing(DEFAULT_PRICING));
@@ -1690,8 +1920,8 @@ export default function App() {
       try {
         const makeBlank = (compKey) => {
           const def = COMP[compKey];
-          if (!def) return { qty: "" };
-          const s = { qty: "" };
+          if (!def) return { qty: "", label: "" };
+          const s = { qty: "", label: "" };
           def.dims.forEach(d => { s[d.key] = d.def ?? ""; });
           def.toggles.forEach(g => g.items.forEach(t => { s[t.key] = false; }));
           def.selects.forEach(sel => { s[sel.key] = 0; });
@@ -1738,12 +1968,21 @@ export default function App() {
 
   const handleTypeChange = useCallback((compKey, typeIdx, field, value) => {
     setQuoteOverride(false); // reset override when data changes
+    setReviewedOnce(false); // require re-review when data changes
     setComps(prev => {
       const c = { ...prev };
       c[compKey] = [...prev[compKey]];
       c[compKey][typeIdx] = { ...prev[compKey][typeIdx], [field]: value };
       return c;
     });
+    // Auto-expand when a toggle is turned ON
+    if (value === true) {
+      const def = COMP[compKey];
+      const isToggle = def.toggles.some(g => g.items.some(t => t.key === field));
+      if (isToggle) {
+        setExpandedTypes(prev => ({ ...prev, [`${compKey}-${typeIdx}`]: true }));
+      }
+    }
   }, []);
 
   const toggleExpand = useCallback((compKey, typeIdx) => {
@@ -1805,7 +2044,7 @@ export default function App() {
           </div>
         </div>
         <div className="flex gap-1">
-          {[["input", "Project Input", "bg-blue-600"], ["quote", "Quote Output", "bg-emerald-600"], ["materials", "Materials", "bg-indigo-600"], ["settings", "Settings", "bg-amber-600"]].map(([t, l, c]) => (
+          {[["input", "Project Input", "bg-blue-600"], ["review", "Review Summary", "bg-purple-600"], ["quote", "Quote Output", "bg-emerald-600"], ["materials", "Materials", "bg-indigo-600"], ["settings", "Settings", "bg-amber-600"]].map(([t, l, c]) => (
             <button key={t} onClick={() => setActiveTab(t)}
               className={`px-4 py-1.5 rounded text-xs font-medium ${activeTab === t ? `${c} text-white` : "bg-slate-700 text-slate-400 hover:bg-slate-600"}`}>{l}</button>
           ))}
@@ -1836,8 +2075,56 @@ export default function App() {
         <span className="text-emerald-400 font-bold font-mono text-base">{fmt(calc.contractValue)}</span>
       </div>
 
+      {/* REVIEW SUMMARY TAB */}
+      {activeTab === "review" && (
+        <ReviewSummary
+          comps={comps}
+          pricing={pricing}
+          laborSettings={laborSettings}
+          calc={calc}
+          proj={proj}
+          misc={misc}
+          margin={margin}
+          validation={validateProject(comps, proj)}
+          onGoToComponent={(compKey, typeIdx) => {
+            setActiveTab("input");
+            setActiveComp(compKey);
+            setExpandedTypes(prev => ({ ...prev, [`${compKey}-${typeIdx}`]: true }));
+          }}
+          onProceedToQuote={() => {
+            const v = validateProject(comps, proj);
+            if (v.isValid) {
+              setReviewedOnce(true);
+              setActiveTab("quote");
+              setQuoteOverride(true);
+            }
+          }}
+          onOverrideToQuote={() => {
+            setReviewedOnce(true);
+            setActiveTab("quote");
+            setQuoteOverride(true);
+          }}
+        />
+      )}
+
       {/* QUOTE OUTPUT TAB — with review gate */}
       {activeTab === "quote" && (() => {
+        // If user hasn't been through review, redirect them
+        if (!reviewedOnce && !quoteOverride) {
+          return (
+            <div className="flex-1 overflow-y-auto p-6 max-w-4xl mx-auto">
+              <div className="bg-purple-50 border-2 border-purple-300 rounded-lg p-6 text-center">
+                <div className="w-12 h-12 bg-purple-400 rounded-full flex items-center justify-center text-white text-xl font-bold mx-auto mb-3">R</div>
+                <h2 className="text-lg font-bold text-purple-800 mb-2">Please review your estimate first</h2>
+                <p className="text-sm text-purple-600 mb-4">Review all components and settings before generating the quote output.</p>
+                <button onClick={() => setActiveTab("review")}
+                  className="px-6 py-2.5 rounded text-sm font-bold bg-purple-600 hover:bg-purple-700 text-white shadow">
+                  Go to Review
+                </button>
+              </div>
+            </div>
+          );
+        }
         const validation = validateProject(comps, proj);
         if (!validation.isValid && !quoteOverride) {
           return (
