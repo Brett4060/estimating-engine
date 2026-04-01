@@ -379,6 +379,30 @@ const fmt = (n) => "$" + (n || 0).toLocaleString("en-US", { maximumFractionDigit
 const fmtDec = (n) => "$" + (n || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 // ═══════════════════════════════════════════════════════════════
+// MATERIAL → TOGGLE MAPPING
+// When a material dropdown is selected, auto-set the related toggle
+// ═══════════════════════════════════════════════════════════════
+const SELECT_TO_TOGGLE = {
+  insideStudType: "insideStuds", outsideStudType: "outsideStuds",
+  topTrackType: ["topTrackInstalled"], bottomTrackType: ["bottomTrackInstalled"],
+  topAngleType: ["topAngleInstalled"], bottomAngleType: ["bottomAngleInstalled"],
+  topPlatesType: ["topPlatesInstalled"], bottomPlatesType: ["bottomPlatesInstalled"],
+  sheathingType: "extSheathing", moistureBarrierType: "moistureBarrier",
+  intSheathingType: "intSheathing",
+  cornerTubeType: "extCornerAngle",
+  kingType: "king", jackType: "jack",
+  headerTubeType: "header", footerTubeType: "footer",
+  insideRafterType: "insideRafters", outsideRafterType: "outsideRafters",
+  kingStudType: "kingStuds", jackStudType: "jackStuds",
+};
+
+function getRelatedToggles(selectKey) {
+  const v = SELECT_TO_TOGGLE[selectKey];
+  if (!v) return [];
+  return Array.isArray(v) ? v : [v];
+}
+
+// ═══════════════════════════════════════════════════════════════
 // HELPERS
 // ═══════════════════════════════════════════════════════════════
 function makeTypeState(compDef) {
@@ -488,13 +512,15 @@ function TypeCard({ compKey, typeIdx, data, onChange, expanded, onToggleExpand, 
   const total = calc.material + calc.waste + labor;
   const perUnitMat = qty > 0 ? (calc.material + calc.waste) / qty : 0;
   const costPerSF = calc.sf > 0 ? perUnitMat / (calc.sf / qty) : 0;
+  const issues = hasData ? validateType(compKey, data) : [];
+  const issueCount = issues.length;
   const upd = (k, v) => onChange(typeIdx, k, v);
 
   return (
     <div className={`border rounded-lg mb-2 transition-all ${hasData ? "border-blue-300 bg-white shadow-sm" : "border-slate-200 bg-slate-50"}`}>
       <div className="flex items-center gap-2 px-3 py-2 cursor-pointer" onClick={onToggleExpand}>
-        <span className={`text-xs font-bold w-6 h-6 rounded flex items-center justify-center ${hasData ? "bg-blue-600 text-white" : "bg-slate-200 text-slate-500"}`}>
-          {TYPE_LABELS[typeIdx]}
+        <span className={`text-xs font-bold w-6 h-6 rounded flex items-center justify-center ${issueCount > 0 ? "bg-amber-500 text-white" : hasData ? "bg-blue-600 text-white" : "bg-slate-200 text-slate-500"}`}>
+          {issueCount > 0 ? "!" : TYPE_LABELS[typeIdx]}
         </span>
         <div className="flex items-center gap-2 flex-1 min-w-0">
           <div className="w-16">
@@ -519,7 +545,8 @@ function TypeCard({ compKey, typeIdx, data, onChange, expanded, onToggleExpand, 
           )}
         </div>
         <div className="flex items-center gap-3">
-          {hasData && <span className="text-xs font-mono text-slate-600">{calc.sf.toLocaleString()} SF</span>}
+          {hasData && <span className="text-sm font-mono font-bold text-blue-600">{calc.sf.toLocaleString()} SF</span>}
+          {hasData && qty > 1 && <span className="text-[10px] font-mono text-slate-400">({Math.round(calc.sf / qty)} SF/ea)</span>}
           {hasData && costPerSF > 0 && <span className="text-xs font-mono text-slate-400">{fmtDec(costPerSF)}/SF</span>}
           <span className={`text-sm font-mono font-bold ${hasData ? "text-blue-700" : "text-slate-400"}`}>
             {hasData ? fmt(total) : "$0"}
@@ -532,6 +559,19 @@ function TypeCard({ compKey, typeIdx, data, onChange, expanded, onToggleExpand, 
 
       {expanded && (
         <div className="border-t border-slate-200 px-3 py-3">
+          {issueCount > 0 && (
+            <div className="mb-3 bg-amber-50 border border-amber-300 rounded p-2 flex items-start gap-2">
+              <span className="w-5 h-5 bg-amber-400 rounded-full flex items-center justify-center text-white text-[10px] font-bold shrink-0 mt-0.5">!</span>
+              <div>
+                <div className="text-xs font-bold text-amber-800 mb-0.5">{issueCount} field{issueCount !== 1 ? "s" : ""} incomplete</div>
+                <div className="flex flex-wrap gap-1">
+                  {issues.map(is => (
+                    <span key={is.field} className="text-[10px] bg-amber-100 text-amber-700 border border-amber-200 rounded px-1.5 py-0.5">{is.label}</span>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
           <div className="mb-3">
             <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Dimensions</div>
             <div className="grid grid-cols-5 gap-2">
@@ -660,45 +700,49 @@ function In({ label, value, onChange, type = "text", className = "" }) {
 function ReviewSummary({ comps, pricing, laborSettings, calc, proj, misc, margin, validation, onGoToComponent, onProceedToQuote, onOverrideToQuote }) {
   const miscTotal = Object.values(misc).reduce((s, v) => s + (Number(v) || 0), 0);
   const hasIssues = !validation.isValid;
+  const [reviewerName, setReviewerName] = useState("");
+  const [reviewLog, setReviewLog] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("gst-review-log") || "[]"); } catch { return []; }
+  });
+
+  const handleReview = () => {
+    if (!reviewerName.trim()) { alert("Please enter your name before reviewing."); return; }
+    const entry = { name: reviewerName.trim(), date: new Date().toISOString(), project: proj.name || "Untitled" };
+    const updated = [entry, ...reviewLog].slice(0, 50);
+    setReviewLog(updated);
+    localStorage.setItem("gst-review-log", JSON.stringify(updated));
+    onProceedToQuote();
+  };
 
   return (
     <div className="flex-1 overflow-y-auto p-6 max-w-5xl mx-auto space-y-4">
-      {/* Validation warning banner */}
+      {/* Validation warning */}
       {hasIssues && (
-        <div className="bg-amber-50 border-2 border-amber-300 rounded-lg p-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-amber-400 rounded-full flex items-center justify-center text-white text-sm font-bold">!</div>
-            <div>
-              <span className="font-bold text-amber-800 text-sm">{validation.totalIssues} issue{validation.totalIssues !== 1 ? "s" : ""} found</span>
-              <p className="text-xs text-amber-600">Some fields are incomplete. Fix them for an accurate quote.</p>
-            </div>
+        <div className="bg-amber-50 border-2 border-amber-300 rounded-lg p-4 flex items-center gap-3">
+          <div className="w-8 h-8 bg-amber-400 rounded-full flex items-center justify-center text-white text-sm font-bold">!</div>
+          <div>
+            <span className="font-bold text-amber-800 text-sm">{validation.totalIssues} issue{validation.totalIssues !== 1 ? "s" : ""} found</span>
+            <p className="text-xs text-amber-600">Some fields are incomplete. Fix them for an accurate quote.</p>
           </div>
         </div>
       )}
 
       {/* Project info */}
       <div className="bg-white border border-purple-200 rounded-lg p-4">
-        <div className="text-xs font-bold text-purple-700 uppercase tracking-wider mb-2 flex items-center gap-2">
-          <div className="w-5 h-5 bg-purple-600 rounded flex items-center justify-center text-white text-[10px] font-bold">P</div>
-          Project Information
-        </div>
+        <div className="text-xs font-bold text-purple-700 uppercase tracking-wider mb-2">Project Information</div>
         <div className="grid grid-cols-3 gap-3 text-sm">
-          <div><span className="text-slate-400 text-xs">Project Name:</span> <span className="font-medium text-slate-800">{proj.name || "—"}</span></div>
-          <div><span className="text-slate-400 text-xs">Location:</span> <span className="font-medium text-slate-800">{proj.location || "—"}</span></div>
-          <div><span className="text-slate-400 text-xs">Date:</span> <span className="font-medium text-slate-800">{proj.date || "—"}</span></div>
-          <div><span className="text-slate-400 text-xs">Salesperson:</span> <span className="font-medium text-slate-800">{proj.salesperson || "—"}</span></div>
-          <div><span className="text-slate-400 text-xs">Proposal #:</span> <span className="font-medium text-slate-800">{proj.proposal || "—"}</span></div>
-          <div><span className="text-slate-400 text-xs">Sales Director:</span> <span className="font-medium text-slate-800">{proj.salesDir || "—"}</span></div>
+          {[["Project", proj.name], ["Location", proj.location], ["Date", proj.date], ["Salesperson", proj.salesperson], ["Proposal #", proj.proposal], ["Sales Director", proj.salesDir]].map(([l, v]) => (
+            <div key={l}><span className="text-slate-400 text-xs">{l}:</span> <span className="font-medium text-slate-800">{v || "—"}</span></div>
+          ))}
         </div>
       </div>
 
-      {/* Components */}
+      {/* Components — column layout, only show selected items */}
       {COMP_KEYS.map(compKey => {
         const def = COMP[compKey];
         const types = comps[compKey];
         const activeTypes = types.map((td, i) => ({ td, i })).filter(({ td }) => (Number(td.qty) || 0) > 0);
         if (activeTypes.length === 0) return null;
-
         const compCalc = calc.byComp[compKey];
         const issuesForComp = Object.keys(validation.allIssues).filter(k => k.startsWith(compKey + "-"));
 
@@ -717,117 +761,131 @@ function ReviewSummary({ comps, pricing, laborSettings, calc, proj, misc, margin
               <span className="text-sm font-mono font-bold text-purple-700">{fmt(compCalc.total)}</span>
             </div>
 
-            <div className="p-3 space-y-3">
-              {activeTypes.map(({ td, i }) => {
-                const typeCalc = calcComponentType(compKey, td, pricing);
-                const typeLab = calcComponentLabor(compKey, td, laborSettings);
-                const typeTotal = typeCalc.material + typeCalc.waste + typeLab;
-                const typeKey = `${compKey}-${i}`;
-                const typeIssues = validation.allIssues[typeKey];
-
-                return (
-                  <div key={i} className={`border rounded-lg p-3 ${typeIssues ? "border-amber-300 bg-amber-50/30" : "border-slate-100"}`}>
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <span className="w-5 h-5 bg-purple-100 text-purple-700 rounded flex items-center justify-center text-[10px] font-bold">{TYPE_LABELS[i]}</span>
-                        {td.label && <span className="font-bold text-sm text-slate-800">{td.label}</span>}
-                        <span className="text-xs text-slate-500">Qty: <span className="font-mono font-medium text-slate-700">{td.qty}</span></span>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <span className="text-xs font-mono text-slate-500">{fmt(typeTotal)}</span>
-                        {typeIssues && (
-                          <button onClick={() => onGoToComponent(compKey, i)}
-                            className="text-[10px] bg-amber-500 hover:bg-amber-600 text-white px-2 py-0.5 rounded font-medium">
-                            Fix {typeIssues.issues.length} issue{typeIssues.issues.length !== 1 ? "s" : ""}
-                          </button>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Dimensions */}
-                    <div className="mb-2">
-                      <div className="flex flex-wrap gap-2">
-                        {def.dims.map(d => {
-                          const v = td[d.key];
-                          const isMissing = v === "" || v === null || v === undefined;
-                          return (
-                            <span key={d.key} className={`text-xs px-2 py-0.5 rounded ${isMissing ? "bg-amber-100 text-amber-700 border border-amber-300" : "bg-slate-100 text-slate-600"}`}>
-                              {d.label}: <span className="font-mono font-medium">{isMissing ? "—" : `${v}${d.unit}`}</span>
-                            </span>
-                          );
-                        })}
-                      </div>
-                    </div>
-
-                    {/* Toggles */}
-                    <div className="mb-2">
-                      <div className="flex flex-wrap gap-1.5">
-                        {def.toggles.map(g => g.items.map(t => {
+            {/* Column headers */}
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="bg-slate-100 border-b border-slate-200 text-[10px] text-slate-500 uppercase tracking-wider">
+                    <th className="text-left px-3 py-1.5 w-48">Selection</th>
+                    {activeTypes.map(({ i }) => (
+                      <th key={i} className="text-center px-2 py-1.5 min-w-[140px]">
+                        Type {TYPE_LABELS[i]}{types[i].label ? ` — ${types[i].label}` : ""}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {/* Qty row */}
+                  <tr className="border-b border-slate-100 bg-blue-50">
+                    <td className="px-3 py-1 font-bold text-blue-700">Quantity</td>
+                    {activeTypes.map(({ td, i }) => (
+                      <td key={i} className="text-center px-2 py-1 font-mono font-bold text-blue-700">{td.qty}</td>
+                    ))}
+                  </tr>
+                  {/* SF row */}
+                  <tr className="border-b border-slate-100 bg-blue-50">
+                    <td className="px-3 py-1 font-bold text-blue-700">Square Footage</td>
+                    {activeTypes.map(({ td, i }) => {
+                      const tc = calcComponentType(compKey, td, pricing);
+                      return <td key={i} className="text-center px-2 py-1 font-mono font-bold text-blue-700">{tc.sf.toLocaleString()} SF</td>;
+                    })}
+                  </tr>
+                  {/* Dimension rows */}
+                  {def.dims.map(d => (
+                    <tr key={d.key} className="border-b border-slate-50">
+                      <td className="px-3 py-1 text-slate-600">{d.label}</td>
+                      {activeTypes.map(({ td, i }) => {
+                        const v = td[d.key];
+                        const missing = v === "" || v == null;
+                        return <td key={i} className={`text-center px-2 py-1 font-mono ${missing ? "text-amber-600 font-bold" : "text-slate-700"}`}>{missing ? "—" : `${v} ${d.unit}`}</td>;
+                      })}
+                    </tr>
+                  ))}
+                  {/* Only show selected toggles + their material */}
+                  {def.toggles.map(g => g.items.map(t => {
+                    // Check if any active type has this toggle ON or has a related material selected
+                    const anySelected = activeTypes.some(({ td }) => td[t.key] === true);
+                    const anyUnset = activeTypes.some(({ td }) => td[t.key] === null || td[t.key] === undefined);
+                    if (!anySelected && !anyUnset) return null; // all set to No — skip
+                    // Find the related material select for this toggle
+                    const relatedSelect = def.selects.find(s => {
+                      const toggles = getRelatedToggles(s.key);
+                      return toggles.includes(t.key);
+                    });
+                    return (
+                      <tr key={t.key} className="border-b border-slate-50">
+                        <td className="px-3 py-1 text-slate-600">{g.section}: {t.label}</td>
+                        {activeTypes.map(({ td, i }) => {
                           const v = td[t.key];
                           const isUnset = v === null || v === undefined;
-                          return (
-                            <span key={t.key} className={`text-[10px] px-2 py-0.5 rounded font-medium ${
-                              isUnset ? "bg-amber-100 text-amber-700 border border-amber-300" :
-                              v ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"
-                            }`}>
-                              {g.section}: {t.label} {isUnset ? "?" : v ? "Yes" : "No"}
-                            </span>
-                          );
-                        }))}
-                      </div>
-                    </div>
-
-                    {/* Material selects */}
-                    <div className="mb-2">
-                      <div className="flex flex-wrap gap-1.5">
-                        {def.selects.map(sel => {
-                          const v = td[sel.key];
-                          const isUnset = v === null || v === undefined;
-                          const selLabel = isUnset ? "—" : (pricing[sel.opts]?.[v]?.label || `#${v}`);
-                          return (
-                            <span key={sel.key} className={`text-[10px] px-2 py-0.5 rounded ${
-                              isUnset ? "bg-amber-100 text-amber-700 border border-amber-300" : "bg-slate-100 text-slate-600"
-                            }`}>
-                              {sel.label}: <span className="font-medium">{selLabel}</span>
-                            </span>
-                          );
+                          if (isUnset) return <td key={i} className="text-center px-2 py-1 text-amber-600 font-bold">?</td>;
+                          if (!v) return <td key={i} className="text-center px-2 py-1 text-slate-300">—</td>;
+                          // Show the material name if toggle is ON and material is selected
+                          const matVal = relatedSelect ? td[relatedSelect.key] : null;
+                          const matName = relatedSelect && matVal != null ? (pricing[relatedSelect.opts]?.[matVal]?.label || "") : "";
+                          return <td key={i} className="text-center px-2 py-1 text-green-700 font-medium">{matName || "Yes"}</td>;
                         })}
-                      </div>
-                    </div>
-
-                    {/* Extras */}
-                    {def.extras && def.extras.length > 0 && (
-                      <div>
-                        <div className="flex flex-wrap gap-2">
-                          {def.extras.map(e => (
-                            <span key={e.key} className="text-[10px] px-2 py-0.5 rounded bg-slate-100 text-slate-600">
-                              {e.label}: <span className="font-mono font-medium">{td[e.key] || 0}</span>
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Cost breakdown for this type */}
-                    <div className="mt-2 pt-2 border-t border-slate-100 flex gap-4 text-[10px] text-slate-500">
-                      <span>Materials: <span className="font-mono font-medium text-slate-700">{fmt(typeCalc.material + typeCalc.waste)}</span></span>
-                      <span>Labor: <span className="font-mono font-medium text-slate-700">{fmt(typeLab)}</span></span>
-                      <span>SF: <span className="font-mono font-medium text-slate-700">{typeCalc.sf.toLocaleString()}</span></span>
-                    </div>
-                  </div>
-                );
-              })}
+                      </tr>
+                    );
+                  }))}
+                  {/* Show selects that don't map to a toggle (standalone materials) */}
+                  {def.selects.filter(sel => {
+                    const toggles = getRelatedToggles(sel.key);
+                    return toggles.length === 0;
+                  }).map(sel => {
+                    const anySet = activeTypes.some(({ td }) => td[sel.key] != null);
+                    if (!anySet) return null;
+                    return (
+                      <tr key={sel.key} className="border-b border-slate-50">
+                        <td className="px-3 py-1 text-slate-600">{sel.label}</td>
+                        {activeTypes.map(({ td, i }) => {
+                          const v = td[sel.key];
+                          if (v == null) return <td key={i} className="text-center px-2 py-1 text-amber-600 font-bold">?</td>;
+                          return <td key={i} className="text-center px-2 py-1 text-slate-700 font-medium">{pricing[sel.opts]?.[v]?.label || `#${v}`}</td>;
+                        })}
+                      </tr>
+                    );
+                  })}
+                  {/* Extras */}
+                  {(def.extras || []).map(e => {
+                    const anyVal = activeTypes.some(({ td }) => Number(td[e.key]) > 0);
+                    if (!anyVal) return null;
+                    return (
+                      <tr key={e.key} className="border-b border-slate-50">
+                        <td className="px-3 py-1 text-slate-600">{e.label}</td>
+                        {activeTypes.map(({ td, i }) => (
+                          <td key={i} className="text-center px-2 py-1 font-mono text-slate-700">{td[e.key] || 0}</td>
+                        ))}
+                      </tr>
+                    );
+                  })}
+                  {/* Cost row */}
+                  <tr className="border-t border-slate-200 bg-slate-50 font-bold">
+                    <td className="px-3 py-1.5 text-slate-700">Total Cost</td>
+                    {activeTypes.map(({ td, i }) => {
+                      const tc = calcComponentType(compKey, td, pricing);
+                      const tl = calcComponentLabor(compKey, td, laborSettings);
+                      return <td key={i} className="text-center px-2 py-1.5 font-mono text-purple-700">{fmt(tc.material + tc.waste + tl)}</td>;
+                    })}
+                  </tr>
+                </tbody>
+              </table>
             </div>
 
-            {/* Component subtotal */}
-            <div className="bg-slate-50 px-4 py-2 border-t border-slate-200 flex justify-between text-xs">
-              <span className="text-slate-500">Subtotal — {def.label}</span>
-              <div className="flex gap-4">
-                <span className="text-slate-400">Mat: <span className="font-mono">{fmt(compCalc.material)}</span></span>
-                <span className="text-slate-400">Lab: <span className="font-mono">{fmt(compCalc.labor)}</span></span>
-                <span className="font-bold text-purple-700 font-mono">{fmt(compCalc.total)}</span>
+            {/* Fix issues buttons */}
+            {issuesForComp.length > 0 && (
+              <div className="px-4 py-2 bg-amber-50 border-t border-amber-200 flex gap-2">
+                {issuesForComp.map(k => {
+                  const entry = validation.allIssues[k];
+                  return (
+                    <button key={k} onClick={() => onGoToComponent(entry.compKey, entry.typeIdx)}
+                      className="text-[10px] bg-amber-500 hover:bg-amber-600 text-white px-2 py-0.5 rounded font-medium">
+                      Fix Type {TYPE_LABELS[entry.typeIdx]} ({entry.issues.length})
+                    </button>
+                  );
+                })}
               </div>
-            </div>
+            )}
           </div>
         );
       })}
@@ -853,24 +911,45 @@ function ReviewSummary({ comps, pricing, laborSettings, calc, proj, misc, margin
         </div>
       </div>
 
-      {/* Action buttons */}
-      <div className="flex items-center gap-3 pb-6">
-        {hasIssues ? (
-          <>
-            <button onClick={onProceedToQuote} disabled
-              className="px-6 py-2.5 rounded text-sm font-medium bg-slate-300 text-slate-500 cursor-not-allowed">
-              Proceed to Quote
+      {/* Reviewer sign-off */}
+      <div className="bg-white border border-purple-200 rounded-lg p-4">
+        <div className="text-xs font-bold text-purple-700 uppercase tracking-wider mb-3">Review Sign-Off</div>
+        <div className="flex items-end gap-3">
+          <div className="flex-1 max-w-xs">
+            <label className="text-[10px] font-medium text-slate-500 uppercase tracking-wide block mb-1">Reviewed By</label>
+            <input type="text" value={reviewerName} onChange={e => setReviewerName(e.target.value)} placeholder="Enter your name"
+              className="w-full border border-slate-300 rounded px-2 py-1.5 text-sm bg-sky-50 focus:ring-2 focus:ring-purple-400 focus:outline-none" />
+          </div>
+          {hasIssues ? (
+            <>
+              <button disabled className="px-5 py-2 rounded text-sm font-medium bg-slate-300 text-slate-500 cursor-not-allowed">
+                Approve & Generate Quote
+              </button>
+              <button onClick={onOverrideToQuote} className="px-4 py-2 text-xs text-slate-500 hover:text-slate-700 border border-slate-300 rounded">
+                Generate Anyway (incomplete)
+              </button>
+            </>
+          ) : (
+            <button onClick={handleReview}
+              className="px-5 py-2 rounded text-sm font-bold bg-purple-600 hover:bg-purple-700 text-white shadow">
+              Approve & Generate Quote
             </button>
-            <button onClick={onOverrideToQuote}
-              className="px-4 py-2 text-xs text-slate-500 hover:text-slate-700 border border-slate-300 rounded">
-              Generate Quote Anyway (incomplete)
-            </button>
-          </>
-        ) : (
-          <button onClick={onProceedToQuote}
-            className="px-6 py-2.5 rounded text-sm font-bold bg-purple-600 hover:bg-purple-700 text-white shadow">
-            Proceed to Quote
-          </button>
+          )}
+        </div>
+        {/* Review history */}
+        {reviewLog.length > 0 && (
+          <div className="mt-3 border-t border-slate-100 pt-2">
+            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Review History</div>
+            <div className="space-y-0.5 max-h-24 overflow-y-auto">
+              {reviewLog.filter(r => r.project === (proj.name || "Untitled")).slice(0, 10).map((r, i) => (
+                <div key={i} className="text-[10px] text-slate-500 flex gap-2">
+                  <span className="font-medium text-slate-700">{r.name}</span>
+                  <span>—</span>
+                  <span>{new Date(r.date).toLocaleString()}</span>
+                </div>
+              ))}
+            </div>
+          </div>
         )}
       </div>
     </div>
@@ -971,109 +1050,325 @@ function ReviewGate({ validation, comps, onGoToComponent, onOverride }) {
 }
 
 function QuoteOutput({ calc, proj, comps, pricing, misc, margin }) {
+  const [view, setView] = useState("quote"); // "quote" | "internal"
   const miscTotal = Object.values(misc).reduce((s, v) => s + (Number(v) || 0), 0);
+  const quoteId = proj.proposal || `GST-${(proj.date || new Date().toISOString().slice(0, 10)).replace(/-/g, "")}`;
+  const deposit = calc.contractValue * 0.15;
+  const commence = calc.contractValue * 0.50;
+  const shipment = calc.contractValue * 0.35;
+
+  const buildQuoteJSON = () => {
+    const panels = [];
+    COMP_KEYS.forEach(k => {
+      const types = comps[k];
+      TYPE_LABELS.forEach((lbl, i) => {
+        const td = types[i];
+        const qty = Number(td.qty) || 0;
+        if (qty === 0) return;
+        const r = calcComponentType(k, td, pricing);
+        const specs = {};
+        if (COMP[k].dims) COMP[k].dims.forEach(d => { if (td[d.key]) specs[d.key] = `${td[d.key]} ${d.unit}`; });
+        if (td.epsDensity && pricing.EPS[td.epsDensity]) specs.epsDensity = pricing.EPS[td.epsDensity].label;
+        if (td.insideStuds && td.insideStudType && pricing.TUBING[td.insideStudType]) specs.insideStudType = pricing.TUBING[td.insideStudType].label;
+        panels.push({ label: td.label || `${COMP[k].label} ${lbl}`, componentType: COMP[k].label, type: lbl, qty, specs, sf: r.sf });
+      });
+    });
+    return {
+      quote: {
+        meta: { quoteId, date: proj.date || new Date().toISOString().slice(0, 10), version: "1.0" },
+        seller: { company: "Guardian Structural Technologies LLC", address: "4640 Manufacturing Avenue", city: "Cleveland", state: "OH", zip: "44135", phone: "(216) 898-5600" },
+        client: { company: proj.ownerName || "", contact: proj.ownerContact || "", phone: proj.ownerPhone || "", email: proj.ownerEmail || "" },
+        project: { name: proj.name || "", location: proj.location || "", architect: proj.archFirm || "" },
+        scopeOfWork: { panels },
+        pricing: {
+          totalAmount: calc.contractValue,
+          paymentSchedule: [
+            { milestone: "Upon execution of contract", percent: 15, amount: deposit },
+            { milestone: "Upon notice to commence manufacturing", percent: 50, amount: commence },
+            { milestone: "Prior to shipment", percent: 35, amount: shipment },
+          ],
+        },
+        termsAndConditions: {
+          exclusions: [
+            "Window and door units (openings provided, units by others)",
+            "Site foundations (by others)",
+            "Field assembly labor (by others)",
+            "Second top plate (by others)",
+          ],
+          notes: ["Price subject to final drawings approval"],
+        },
+      },
+    };
+  };
+
+  const handleDownloadJSON = () => {
+    const data = buildQuoteJSON();
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${quoteId}-quote.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="p-6 max-w-4xl mx-auto space-y-6">
-      {/* Customer Quote */}
-      <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-6">
-        <div className="flex items-center gap-3 mb-4">
-          <img src={GST_LOGO} alt="GST" className="h-12 w-12 rounded" />
-          <h2 className="text-lg font-bold text-emerald-800">CUSTOMER QUOTE</h2>
-        </div>
-        <div className="grid grid-cols-3 gap-4 text-sm mb-4">
-          <div><span className="text-slate-500">Project:</span> <span className="font-medium">{proj.name || "—"}</span></div>
-          <div><span className="text-slate-500">Location:</span> <span className="font-medium">{proj.location || "—"}</span></div>
-          <div><span className="text-slate-500">Date:</span> <span className="font-medium">{proj.date || "—"}</span></div>
-          <div><span className="text-slate-500">Proposal #:</span> <span className="font-medium">{proj.proposal || "—"}</span></div>
-          <div><span className="text-slate-500">Salesperson:</span> <span className="font-medium">{proj.salesperson || "—"}</span></div>
-          <div><span className="text-slate-500">Total SF:</span> <span className="font-medium">{calc.totalSF.toLocaleString()}</span></div>
-        </div>
-        <div className="border-t border-emerald-200 pt-4 space-y-2 text-sm">
-          <div className="flex justify-between"><span>Materials + Waste (5%)</span><span className="font-mono">{fmt(calc.totalMat)}</span></div>
-          <div className="flex justify-between"><span>Labor</span><span className="font-mono">{fmt(calc.totalLab)}</span></div>
-          <div className="flex justify-between"><span>Overhead ($2.59/SF)</span><span className="font-mono">{fmt(calc.overhead)}</span></div>
-          <div className="flex justify-between"><span>Miscellaneous</span><span className="font-mono">{fmt(miscTotal)}</span></div>
-          <div className="flex justify-between border-t border-emerald-300 pt-2 font-bold text-lg text-emerald-800">
-            <span>Contract Value ({margin}% margin)</span><span className="font-mono">{fmt(calc.contractValue)}</span>
+      <style>{`@media print { .no-print { display: none !important; } }`}</style>
+
+      {/* Toggle / Action Buttons */}
+      <div className="flex gap-3 no-print">
+        <button
+          onClick={() => setView("quote")}
+          className={`px-4 py-2 text-sm rounded font-medium ${view === "quote" ? "bg-emerald-600 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
+        >Customer Quote</button>
+        <button
+          onClick={() => setView("internal")}
+          className={`px-4 py-2 text-sm rounded font-medium ${view === "internal" ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
+        >Internal Breakdown</button>
+        {view === "quote" && (
+          <>
+            <button onClick={() => window.print()} className="ml-auto px-4 py-2 text-sm bg-slate-700 text-white rounded hover:bg-slate-800">Print Quote</button>
+            <button onClick={handleDownloadJSON} className="px-4 py-2 text-sm bg-slate-200 text-slate-700 rounded hover:bg-slate-300">Download JSON</button>
+          </>
+        )}
+      </div>
+
+      {/* ============ CUSTOMER QUOTE VIEW ============ */}
+      {view === "quote" && (
+        <div className="bg-white border border-slate-200 rounded-lg p-8 space-y-8" style={{ fontFamily: "Georgia, serif" }}>
+
+          {/* Header */}
+          <div className="flex items-center justify-between border-b-2 border-emerald-700 pb-6">
+            <div className="flex items-center gap-4">
+              <img src={GST_LOGO} alt="GST" className="h-16 w-16 rounded" />
+              <div>
+                <h1 className="text-xl font-bold text-emerald-800 tracking-wide">Guardian Structural Technologies LLC</h1>
+                <p className="text-sm text-slate-500">4640 Manufacturing Avenue, Cleveland, OH 44135</p>
+                <p className="text-sm text-slate-500">(216) 898-5600</p>
+              </div>
+            </div>
+            <div className="text-right">
+              <h2 className="text-2xl font-bold text-slate-800 tracking-wider">PROPOSAL</h2>
+            </div>
+          </div>
+
+          {/* Quote Meta + Client + Project */}
+          <div className="grid grid-cols-2 gap-8 text-sm">
+            <div className="space-y-4">
+              <div>
+                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Quote Details</h3>
+                <div className="space-y-1">
+                  <div><span className="text-slate-500 w-24 inline-block">Quote ID:</span> <span className="font-semibold">{quoteId}</span></div>
+                  <div><span className="text-slate-500 w-24 inline-block">Date:</span> <span className="font-semibold">{proj.date || "—"}</span></div>
+                  <div><span className="text-slate-500 w-24 inline-block">Salesperson:</span> <span className="font-semibold">{proj.salesperson || "—"}</span></div>
+                </div>
+              </div>
+              <div>
+                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Client</h3>
+                <div className="space-y-1">
+                  {proj.ownerName && <div className="font-semibold">{proj.ownerName}</div>}
+                  {proj.ownerContact && <div className="text-slate-600">Attn: {proj.ownerContact}</div>}
+                  {proj.ownerPhone && <div className="text-slate-600">{proj.ownerPhone}</div>}
+                  {proj.ownerEmail && <div className="text-slate-600">{proj.ownerEmail}</div>}
+                  {!proj.ownerName && !proj.ownerContact && <div className="text-slate-400 italic">No client info provided</div>}
+                </div>
+              </div>
+            </div>
+            <div>
+              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Project</h3>
+              <div className="space-y-1">
+                <div><span className="text-slate-500">Project:</span> <span className="font-semibold">{proj.name || "—"}</span></div>
+                <div><span className="text-slate-500">Location:</span> <span className="font-semibold">{proj.location || "—"}</span></div>
+                {proj.archFirm && <div><span className="text-slate-500">Architect:</span> <span className="font-semibold">{proj.archFirm}</span></div>}
+              </div>
+            </div>
+          </div>
+
+          {/* Scope of Work — Panels Table */}
+          <div>
+            <h3 className="text-sm font-bold text-emerald-800 uppercase tracking-wider border-b border-emerald-200 pb-1 mb-3">Scope of Work — Panel Schedule</h3>
+            <table className="w-full text-sm border-collapse">
+              <thead>
+                <tr className="bg-slate-50 text-xs text-slate-500 uppercase">
+                  <th className="text-left py-2 px-2 border-b">Panel</th>
+                  <th className="text-left py-2 px-2 border-b">Type</th>
+                  <th className="text-right py-2 px-2 border-b">Qty</th>
+                  <th className="text-left py-2 px-2 border-b">Key Specifications</th>
+                  <th className="text-right py-2 px-2 border-b">SF</th>
+                </tr>
+              </thead>
+              <tbody>
+                {COMP_KEYS.map(k => {
+                  const types = comps[k];
+                  return TYPE_LABELS.map((lbl, i) => {
+                    const td = types[i];
+                    const qty = Number(td.qty) || 0;
+                    if (qty === 0) return null;
+                    const r = calcComponentType(k, td, pricing);
+                    const specs = [];
+                    if (COMP[k].dims) COMP[k].dims.forEach(d => { if (td[d.key]) specs.push(`${d.label}: ${td[d.key]} ${d.unit}`); });
+                    if (td.epsDensity && pricing.EPS[td.epsDensity]) specs.push(`EPS: ${pricing.EPS[td.epsDensity].label}`);
+                    if (td.insideStuds && td.insideStudType && pricing.TUBING[td.insideStudType]) specs.push(`Inside Stud: ${pricing.TUBING[td.insideStudType].label}`);
+                    return (
+                      <tr key={`${k}-${i}`} className="border-b border-slate-100">
+                        <td className="py-1.5 px-2 font-medium">{td.label || `${COMP[k].label} ${lbl}`}</td>
+                        <td className="py-1.5 px-2 text-slate-600">{COMP[k].label}</td>
+                        <td className="py-1.5 px-2 text-right font-mono">{qty}</td>
+                        <td className="py-1.5 px-2 text-xs text-slate-500">{specs.join(" | ") || "—"}</td>
+                        <td className="py-1.5 px-2 text-right font-mono">{r.sf.toLocaleString()}</td>
+                      </tr>
+                    );
+                  });
+                })}
+                <tr className="border-t-2 border-slate-300 font-bold">
+                  <td className="py-2 px-2" colSpan={4}>Total Square Footage</td>
+                  <td className="py-2 px-2 text-right font-mono">{calc.totalSF.toLocaleString()}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          {/* Metal Accessories */}
+          <div>
+            <h3 className="text-sm font-bold text-emerald-800 uppercase tracking-wider border-b border-emerald-200 pb-1 mb-3">Metal Accessories Included</h3>
+            <ul className="list-disc list-inside text-sm text-slate-700 space-y-1 ml-2">
+              <li>Top and Bottom Angle or Track</li>
+              <li>Outside wall corners</li>
+              <li>Inside wall corners</li>
+              <li>Strapping for intersecting interior partitions</li>
+              <li>Sealing spray foam</li>
+              <li>Fasteners and assembly accessories</li>
+            </ul>
+          </div>
+
+          {/* Pricing */}
+          <div>
+            <h3 className="text-sm font-bold text-emerald-800 uppercase tracking-wider border-b border-emerald-200 pb-1 mb-3">Pricing</h3>
+            <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-5">
+              <div className="flex justify-between items-center mb-4">
+                <span className="text-lg font-bold text-slate-800">Total Contract Value</span>
+                <span className="text-2xl font-bold text-emerald-800 font-mono">{fmt(calc.contractValue)}</span>
+              </div>
+              <div className="border-t border-emerald-200 pt-3">
+                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Payment Schedule</h4>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between"><span>15% — Upon execution of contract</span><span className="font-mono font-semibold">{fmt(deposit)}</span></div>
+                  <div className="flex justify-between"><span>50% — Upon notice to commence manufacturing</span><span className="font-mono font-semibold">{fmt(commence)}</span></div>
+                  <div className="flex justify-between"><span>35% — Prior to shipment</span><span className="font-mono font-semibold">{fmt(shipment)}</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Terms & Conditions */}
+          <div>
+            <h3 className="text-sm font-bold text-emerald-800 uppercase tracking-wider border-b border-emerald-200 pb-1 mb-3">Terms &amp; Conditions</h3>
+            <div className="text-sm text-slate-700 space-y-3">
+              <div>
+                <h4 className="font-semibold text-slate-600 mb-1">Exclusions</h4>
+                <ul className="list-disc list-inside space-y-1 ml-2">
+                  <li>Window and door units (openings provided, units by others)</li>
+                  <li>Site foundations (by others)</li>
+                  <li>Field assembly labor (by others)</li>
+                  <li>Second top plate (by others)</li>
+                </ul>
+              </div>
+              <div>
+                <h4 className="font-semibold text-slate-600 mb-1">Notes</h4>
+                <ul className="list-disc list-inside space-y-1 ml-2">
+                  <li>Price subject to final drawings approval</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div className="border-t-2 border-emerald-700 pt-4 text-center text-xs text-slate-400">
+            Guardian Structural Technologies LLC &mdash; 4640 Manufacturing Avenue, Cleveland, OH 44135 &mdash; (216) 898-5600
           </div>
         </div>
-      </div>
+      )}
 
-      {/* Internal Breakdown */}
-      <div className="bg-white border border-slate-200 rounded-lg p-6">
-        <h2 className="text-lg font-bold text-slate-800 mb-4">INTERNAL COST BREAKDOWN <span className="text-xs font-normal text-red-500 ml-2">GST Eyes Only</span></h2>
-        <table className="w-full text-sm">
-          <thead><tr className="text-slate-400 text-xs border-b"><th className="text-left py-1">Component</th><th className="text-right">SF</th><th className="text-right">Material</th><th className="text-right">Labor</th><th className="text-right">Total</th></tr></thead>
-          <tbody>
-            {COMP_KEYS.map(k => {
-              const c = calc.byComp[k];
-              if (!c || c.total === 0) return null;
-              return (
-                <tr key={k} className="border-b border-slate-100">
-                  <td className="py-1 font-medium">{COMP[k].label}</td>
-                  <td className="text-right font-mono text-slate-500">{c.sf.toLocaleString()}</td>
-                  <td className="text-right font-mono">{fmt(c.material)}</td>
-                  <td className="text-right font-mono">{fmt(c.labor)}</td>
-                  <td className="text-right font-mono font-bold">{fmt(c.total)}</td>
+      {/* ============ INTERNAL BREAKDOWN VIEW ============ */}
+      {view === "internal" && (
+        <>
+          <div className="bg-white border border-slate-200 rounded-lg p-6">
+            <h2 className="text-lg font-bold text-slate-800 mb-4">INTERNAL COST BREAKDOWN <span className="text-xs font-normal text-red-500 ml-2">GST Eyes Only</span></h2>
+            <table className="w-full text-sm">
+              <thead><tr className="text-slate-400 text-xs border-b"><th className="text-left py-1">Component</th><th className="text-right">SF</th><th className="text-right">Material</th><th className="text-right">Labor</th><th className="text-right">Total</th></tr></thead>
+              <tbody>
+                {COMP_KEYS.map(k => {
+                  const c = calc.byComp[k];
+                  if (!c || c.total === 0) return null;
+                  return (
+                    <tr key={k} className="border-b border-slate-100">
+                      <td className="py-1 font-medium">{COMP[k].label}</td>
+                      <td className="text-right font-mono text-slate-500">{c.sf.toLocaleString()}</td>
+                      <td className="text-right font-mono">{fmt(c.material)}</td>
+                      <td className="text-right font-mono">{fmt(c.labor)}</td>
+                      <td className="text-right font-mono font-bold">{fmt(c.total)}</td>
+                    </tr>
+                  );
+                })}
+                <tr className="border-t-2 border-slate-300 font-bold">
+                  <td className="py-2">TOTALS</td>
+                  <td className="text-right font-mono">{calc.totalSF.toLocaleString()}</td>
+                  <td className="text-right font-mono">{fmt(calc.totalMat)}</td>
+                  <td className="text-right font-mono">{fmt(calc.totalLab)}</td>
+                  <td className="text-right font-mono">{fmt(calc.totalMat + calc.totalLab)}</td>
                 </tr>
+                <tr><td className="py-1 text-slate-500">Overhead ($2.59/SF)</td><td></td><td></td><td></td><td className="text-right font-mono">{fmt(calc.overhead)}</td></tr>
+                <tr><td className="py-1 text-slate-500">Miscellaneous</td><td></td><td></td><td></td><td className="text-right font-mono">{fmt(miscTotal)}</td></tr>
+                <tr className="border-t border-slate-200"><td className="py-1">Subtotal</td><td></td><td></td><td></td><td className="text-right font-mono font-bold">{fmt(calc.subtotal + miscTotal)}</td></tr>
+                <tr><td className="py-1">Gross Profit ({margin}%)</td><td></td><td></td><td></td><td className="text-right font-mono text-emerald-600">{fmt(calc.grossProfit)}</td></tr>
+                <tr className="text-lg font-bold text-blue-700 border-t-2 border-blue-200"><td className="py-2">CONTRACT VALUE</td><td></td><td></td><td></td><td className="text-right font-mono">{fmt(calc.contractValue)}</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          {/* BOM */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
+            <h2 className="text-lg font-bold text-blue-800 mb-4">BILL OF MATERIALS (by component)</h2>
+            {COMP_KEYS.map(k => {
+              const types = comps[k];
+              const anyData = types.some(t => (Number(t.qty) || 0) > 0);
+              if (!anyData) return null;
+              return (
+                <div key={k} className="mb-4">
+                  <h3 className="text-sm font-bold text-blue-700 mb-1">{COMP[k].label}</h3>
+                  {TYPE_LABELS.map((lbl, i) => {
+                    const td = types[i];
+                    const qty = Number(td.qty) || 0;
+                    if (qty === 0) return null;
+                    const r = calcComponentType(k, td, pricing);
+                    if (r.lineItems.length === 0) return null;
+                    return (
+                      <div key={i} className="ml-4 mb-2">
+                        <div className="text-xs font-bold text-slate-600 mb-0.5">Type {lbl} (x{qty})</div>
+                        <table className="w-full text-xs">
+                          <thead><tr className="text-slate-400 text-[10px]"><th className="text-left">Item</th><th className="text-right">Qty</th><th className="text-right">Unit</th><th className="text-right">$/Unit</th><th className="text-right">Cost</th></tr></thead>
+                          <tbody>
+                            {r.lineItems.map((li, j) => (
+                              <tr key={j} className={li.cost < 0 ? "text-red-500" : ""}>
+                                <td className="py-0.5">{li.name}</td>
+                                <td className="text-right font-mono">{li.qty.toFixed(1)}</td>
+                                <td className="text-right text-slate-400">{li.unit}</td>
+                                <td className="text-right font-mono">{fmtDec(li.unitPrice)}</td>
+                                <td className="text-right font-mono">{fmtDec(li.cost)}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    );
+                  })}
+                </div>
               );
             })}
-            <tr className="border-t-2 border-slate-300 font-bold">
-              <td className="py-2">TOTALS</td>
-              <td className="text-right font-mono">{calc.totalSF.toLocaleString()}</td>
-              <td className="text-right font-mono">{fmt(calc.totalMat)}</td>
-              <td className="text-right font-mono">{fmt(calc.totalLab)}</td>
-              <td className="text-right font-mono">{fmt(calc.totalMat + calc.totalLab)}</td>
-            </tr>
-            <tr><td className="py-1 text-slate-500">Overhead ($2.59/SF)</td><td></td><td></td><td></td><td className="text-right font-mono">{fmt(calc.overhead)}</td></tr>
-            <tr><td className="py-1 text-slate-500">Miscellaneous</td><td></td><td></td><td></td><td className="text-right font-mono">{fmt(miscTotal)}</td></tr>
-            <tr className="border-t border-slate-200"><td className="py-1">Subtotal</td><td></td><td></td><td></td><td className="text-right font-mono font-bold">{fmt(calc.subtotal + miscTotal)}</td></tr>
-            <tr><td className="py-1">Gross Profit ({margin}%)</td><td></td><td></td><td></td><td className="text-right font-mono text-emerald-600">{fmt(calc.grossProfit)}</td></tr>
-            <tr className="text-lg font-bold text-blue-700 border-t-2 border-blue-200"><td className="py-2">CONTRACT VALUE</td><td></td><td></td><td></td><td className="text-right font-mono">{fmt(calc.contractValue)}</td></tr>
-          </tbody>
-        </table>
-      </div>
-
-      {/* BOM */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
-        <h2 className="text-lg font-bold text-blue-800 mb-4">BILL OF MATERIALS (by component)</h2>
-        {COMP_KEYS.map(k => {
-          const types = comps[k];
-          const anyData = types.some(t => (Number(t.qty) || 0) > 0);
-          if (!anyData) return null;
-          return (
-            <div key={k} className="mb-4">
-              <h3 className="text-sm font-bold text-blue-700 mb-1">{COMP[k].label}</h3>
-              {TYPE_LABELS.map((lbl, i) => {
-                const td = types[i];
-                const qty = Number(td.qty) || 0;
-                if (qty === 0) return null;
-                const r = calcComponentType(k, td, pricing);
-                if (r.lineItems.length === 0) return null;
-                return (
-                  <div key={i} className="ml-4 mb-2">
-                    <div className="text-xs font-bold text-slate-600 mb-0.5">Type {lbl} (x{qty})</div>
-                    <table className="w-full text-xs">
-                      <thead><tr className="text-slate-400 text-[10px]"><th className="text-left">Item</th><th className="text-right">Qty</th><th className="text-right">Unit</th><th className="text-right">$/Unit</th><th className="text-right">Cost</th></tr></thead>
-                      <tbody>
-                        {r.lineItems.map((li, j) => (
-                          <tr key={j} className={li.cost < 0 ? "text-red-500" : ""}>
-                            <td className="py-0.5">{li.name}</td>
-                            <td className="text-right font-mono">{li.qty.toFixed(1)}</td>
-                            <td className="text-right text-slate-400">{li.unit}</td>
-                            <td className="text-right font-mono">{fmtDec(li.unitPrice)}</td>
-                            <td className="text-right font-mono">{fmtDec(li.cost)}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                );
-              })}
-            </div>
-          );
-        })}
-      </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -1685,7 +1980,7 @@ function SettingsTab({ settings, onUpdateSettings, pricing, onUpdatePricing }) {
   );
 }
 
-function JobPicker({ jobs, activeJobId, onSelect, onNew, onDelete, onExport, onImport, onImportExcel }) {
+function JobPicker({ jobs, activeJobId, onSelect, onNew, onDelete, onExport, onExportAll, onImport, onImportExcel }) {
   return (
     <div className="bg-slate-800 px-4 py-1 flex items-center gap-2 text-xs border-b border-slate-700">
       <span className="text-slate-500 font-medium">Job:</span>
@@ -1696,9 +1991,10 @@ function JobPicker({ jobs, activeJobId, onSelect, onNew, onDelete, onExport, onI
         ))}
       </select>
       <button onClick={onNew} className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-xs font-medium">New Job</button>
-      <button onClick={onExport} className="bg-slate-600 hover:bg-slate-500 text-white px-3 py-1 rounded text-xs">Export JSON</button>
+      <button onClick={onExport} className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1 rounded text-xs font-bold">Save to File</button>
+      <button onClick={onExportAll} className="bg-emerald-800 hover:bg-emerald-700 text-white px-3 py-1 rounded text-xs">Save All Jobs</button>
       <label className="bg-slate-600 hover:bg-slate-500 text-white px-3 py-1 rounded text-xs cursor-pointer">
-        Import JSON
+        Open File
         <input type="file" accept=".json" className="hidden" onChange={onImport} />
       </label>
       <label className="bg-amber-600 hover:bg-amber-500 text-white px-3 py-1 rounded text-xs cursor-pointer font-medium">
@@ -1885,6 +2181,23 @@ export default function App() {
     URL.revokeObjectURL(url);
   }, [proj, aboveSF, belowSF, margin, misc, comps]);
 
+  const handleExportAllJobs = useCallback(() => {
+    // Save current job first
+    if (activeJobId) saveJob(activeJobId, { proj, aboveSF, belowSF, margin, misc, comps });
+    const allData = { exportedAt: new Date().toISOString(), jobs: [] };
+    jobs.forEach(j => {
+      const jd = loadJob(j.id);
+      if (jd) allData.jobs.push({ ...j, data: jd });
+    });
+    const blob = new Blob([JSON.stringify(allData, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `GST_All_Jobs_${new Date().toISOString().slice(0,10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [activeJobId, proj, aboveSF, belowSF, margin, misc, comps, jobs]);
+
   const handleImportJob = useCallback((e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -1892,6 +2205,22 @@ export default function App() {
     reader.onload = (ev) => {
       try {
         const data = JSON.parse(ev.target.result);
+        // Handle "all jobs" export format
+        if (data.jobs && Array.isArray(data.jobs)) {
+          let count = 0;
+          data.jobs.forEach(j => {
+            if (!j.data || !j.data.comps) return;
+            const id = generateId();
+            const name = j.data.proj?.name || j.name || "Imported";
+            saveJob(id, j.data);
+            const entry = { id, name, created: j.created || new Date().toISOString(), updated: new Date().toISOString() };
+            setJobs(prev => { const next = [...prev, entry]; saveJobsIndex(next); return next; });
+            count++;
+          });
+          alert(`Imported ${count} job${count !== 1 ? "s" : ""}.`);
+          return;
+        }
+        // Handle single job format
         if (!data.comps) { alert("Invalid file — no component data found."); return; }
         const id = generateId();
         const name = data.proj?.name || data.proj?.proposal || file.name.replace(".json", "");
@@ -1983,12 +2312,68 @@ export default function App() {
         setExpandedTypes(prev => ({ ...prev, [`${compKey}-${typeIdx}`]: true }));
       }
     }
+    // Auto-expand and auto-toggle when a material dropdown is selected
+    if (value !== null && value !== undefined && typeof value === 'number') {
+      const def = COMP[compKey];
+      const isSelect = def.selects.some(s => s.key === field);
+      if (isSelect) {
+        setExpandedTypes(prev => ({ ...prev, [`${compKey}-${typeIdx}`]: true }));
+        // Auto-set related toggles to ON
+        const relatedToggles = getRelatedToggles(field);
+        if (relatedToggles.length > 0) {
+          setComps(prev => {
+            const c = { ...prev };
+            c[compKey] = [...prev[compKey]];
+            const updated = { ...prev[compKey][typeIdx] };
+            relatedToggles.forEach(tk => {
+              // Only auto-set if currently unset (null) or false — don't override explicit user choice
+              if (updated[tk] === null || updated[tk] === undefined || updated[tk] === false) {
+                updated[tk] = true;
+              }
+            });
+            c[compKey][typeIdx] = updated;
+            return c;
+          });
+        }
+      }
+    }
   }, []);
 
   const toggleExpand = useCallback((compKey, typeIdx) => {
     const key = `${compKey}-${typeIdx}`;
+    // If trying to expand a type, check all previous types with qty are complete
+    if (!expandedTypes[key]) {
+      for (let i = 0; i < typeIdx; i++) {
+        const td = comps[compKey][i];
+        const qty = Number(td.qty) || 0;
+        if (qty === 0) continue;
+        const issues = validateType(compKey, td);
+        if (issues.length > 0) {
+          alert(`Please complete ${COMP[compKey].label} Type ${TYPE_LABELS[i]} before moving to Type ${TYPE_LABELS[typeIdx]}.\n\nMissing: ${issues.map(is => is.label).join(", ")}`);
+          setExpandedTypes(prev => ({ ...prev, [`${compKey}-${i}`]: true }));
+          return;
+        }
+      }
+    }
     setExpandedTypes(prev => ({ ...prev, [key]: !prev[key] }));
-  }, []);
+  }, [comps, expandedTypes]);
+
+  const handleCompSwitch = useCallback((newComp) => {
+    // Check if any active types in current component are incomplete
+    const currentTypes = comps[activeComp];
+    for (let i = 0; i < currentTypes.length; i++) {
+      const td = currentTypes[i];
+      const qty = Number(td.qty) || 0;
+      if (qty === 0) continue;
+      const issues = validateType(activeComp, td);
+      if (issues.length > 0) {
+        alert(`Please complete ${COMP[activeComp].label} Type ${TYPE_LABELS[i]} before moving on.\n\nMissing: ${issues.map(is => is.label).join(", ")}`);
+        setExpandedTypes(prev => ({ ...prev, [`${activeComp}-${i}`]: true }));
+        return;
+      }
+    }
+    setActiveComp(newComp);
+  }, [activeComp, comps]);
 
   const pf = (k, v) => setProj(p => ({ ...p, [k]: v }));
   const miscTotal = Object.values(misc).reduce((s, v) => s + (Number(v) || 0), 0);
@@ -2059,6 +2444,7 @@ export default function App() {
         onNew={handleNewJob}
         onDelete={handleDeleteJob}
         onExport={handleExportJob}
+        onExportAll={handleExportAllJobs}
         onImport={handleImportJob}
         onImportExcel={handleImportExcel}
       />
@@ -2240,7 +2626,7 @@ export default function App() {
                 const active = activeComp === k;
                 const hasData = c && c.total > 0;
                 return (
-                  <button key={k} onClick={() => setActiveComp(k)}
+                  <button key={k} onClick={() => handleCompSwitch(k)}
                     className={`w-full text-left px-3 py-2 border-l-3 text-xs transition-colors ${active ? "bg-white border-l-blue-600 text-slate-900 font-bold" : "border-l-transparent text-slate-600 hover:bg-white"}`}>
                     <div className="flex justify-between items-center">
                       <span className="flex items-center gap-1.5">
