@@ -1051,7 +1051,47 @@ function ReviewGate({ validation, comps, onGoToComponent, onOverride }) {
 
 function QuoteOutput({ calc, proj, comps, pricing, misc, margin }) {
   const [view, setView] = useState("quote"); // "quote" | "internal"
+  const [quoteNotes, setQuoteNotes] = useState("");
+  const [attachments, setAttachments] = useState([]); // { name, size, type, url }
   const miscTotal = Object.values(misc).reduce((s, v) => s + (Number(v) || 0), 0);
+
+  const NOTE_TEMPLATES = [
+    "Price valid for 30 days from date of proposal.",
+    "Lead time: 8-10 weeks from receipt of deposit and approved drawings.",
+    "Subject to final engineering review and approval.",
+    "Panels shipped in component form for field assembly by others.",
+    "All panels fabricated with galvanized structural steel per applicable building codes.",
+    "Delivery schedule to be coordinated upon receipt of signed Purchase Agreement.",
+    "Pricing based on current material costs; subject to adjustment for material escalation.",
+    "Guardian to provide on-site consultation during initial panel installation.",
+    "Client responsible for unloading panels at job site.",
+    "Structural sheathing at panel connections by others.",
+  ];
+
+  const addNote = (text) => {
+    setQuoteNotes(prev => prev ? prev + "\n" + text : text);
+  };
+
+  const handleFileAttach = (e) => {
+    const files = Array.from(e.target.files || []);
+    const newAttachments = files.map(f => ({
+      name: f.name,
+      size: (f.size / 1024).toFixed(1) + " KB",
+      type: f.type,
+      url: URL.createObjectURL(f),
+    }));
+    setAttachments(prev => [...prev, ...newAttachments]);
+    e.target.value = "";
+  };
+
+  const removeAttachment = (idx) => {
+    setAttachments(prev => {
+      const next = [...prev];
+      URL.revokeObjectURL(next[idx].url);
+      next.splice(idx, 1);
+      return next;
+    });
+  };
   const quoteId = proj.proposal || `GST-${(proj.date || new Date().toISOString().slice(0, 10)).replace(/-/g, "")}`;
   const deposit = calc.contractValue * 0.15;
   const commence = calc.contractValue * 0.50;
@@ -1180,21 +1220,29 @@ function QuoteOutput({ calc, proj, comps, pricing, misc, margin }) {
 
             {/* ── Scope of Work ── */}
             <div style={sectionHead()}>Scope of Work</div>
-
-            {/* Engineering */}
-            <div style={{ marginBottom: 20 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: QS.text, marginBottom: 6 }}>Engineering</div>
-              <div style={{ fontSize: 12, color: QS.muted, lineHeight: 1.6, paddingLeft: 12 }}>
-                SHIELD Panel structural engineering, shop drawings, and panel layout design per applicable building codes.
-              </div>
+            <div style={{ fontSize: 12, color: QS.muted, lineHeight: 1.7, marginBottom: 20 }}>
+              Guardian Structural Technologies LLC is pleased to provide the following scope of work for the fabrication and delivery of SHIELD™ Panels for the above-referenced project.
             </div>
 
-            {/* Panel Fabrication */}
+            {/* 1. Engineering */}
             <div style={{ marginBottom: 20 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: QS.text, marginBottom: 6 }}>Panel Fabrication</div>
-              <div style={{ fontSize: 12, color: QS.muted, lineHeight: 1.6, paddingLeft: 12, marginBottom: 12 }}>
-                Factory-fabricated SHIELD Panels per engineered shop drawings, including EPS insulation cores and steel stud framing.
-              </div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: QS.navy, marginBottom: 8 }}>1. Engineering & Design Services</div>
+              <ol style={{ paddingLeft: 20, fontSize: 12, color: QS.text, lineHeight: 1.7, margin: 0, listStyleType: "decimal" }}>
+                <li style={{ marginBottom: 6 }}>Prepare shop and construction drawings establishing all structural and connection details required for fabrication, regulatory approval, and installation.</li>
+                <li style={{ marginBottom: 6 }}>Provide professional engineering coordination with the engineer of record as required.</li>
+                <li style={{ marginBottom: 6 }}>Site plans, if required, will be furnished by third parties.</li>
+              </ol>
+            </div>
+
+            {/* 2. Panel Fabrication */}
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: QS.navy, marginBottom: 8 }}>2. SHIELD™ Panel Fabrication</div>
+              <ol style={{ paddingLeft: 20, fontSize: 12, color: QS.text, lineHeight: 1.7, margin: 0, listStyleType: "decimal" }}>
+                <li style={{ marginBottom: 6 }}>Fabricate all wall and roof panels per the approved shop drawings and the specifications described in the Line Items section below.</li>
+                <li style={{ marginBottom: 6 }}>All wall panels will be factory assembled into sections up to 8 feet wide.</li>
+                <li style={{ marginBottom: 6 }}>Engineered headers will be factory installed at all door and window openings per the preliminary plans.</li>
+                <li style={{ marginBottom: 6 }}>All panels will be fabricated with galvanized structural steel tubes embedded in EPS foam.</li>
+              </ol>
             </div>
 
             {/* ── Line Items Table ── */}
@@ -1208,9 +1256,8 @@ function QuoteOutput({ calc, proj, comps, pricing, misc, margin }) {
                   ))}
                 </tr>
               </thead>
-              <tbody>
                 {panelRows.map((group, gi) => (
-                  <React.Fragment key={gi}>
+                  <tbody key={gi}>
                     {/* Category row */}
                     <tr>
                       <td colSpan={3} style={{ padding: "10px 12px 4px", fontWeight: 700, fontSize: 12, color: QS.accent,
@@ -1230,34 +1277,36 @@ function QuoteOutput({ calc, proj, comps, pricing, misc, margin }) {
                         <td style={{ padding: "8px 12px", textAlign: "right", fontWeight: 600, fontFamily: "monospace" }}>{row.sf.toLocaleString()}</td>
                       </tr>
                     ))}
-                  </React.Fragment>
+                  </tbody>
                 ))}
-                {/* Total SF row */}
-                <tr style={{ borderTop: `2px solid ${QS.navy}` }}>
-                  <td style={{ padding: "10px 12px", fontWeight: 700 }}>Total Square Footage</td>
-                  <td style={{ padding: "10px 12px", textAlign: "right" }}></td>
-                  <td style={{ padding: "10px 12px", textAlign: "right", fontWeight: 700, fontFamily: "monospace", fontSize: 13 }}>{calc.totalSF.toLocaleString()}</td>
-                </tr>
-              </tbody>
+                <tbody>
+                  <tr style={{ borderTop: `2px solid ${QS.navy}` }}>
+                    <td style={{ padding: "10px 12px", fontWeight: 700 }}>Total Square Footage</td>
+                    <td style={{ padding: "10px 12px", textAlign: "right" }}></td>
+                    <td style={{ padding: "10px 12px", textAlign: "right", fontWeight: 700, fontFamily: "monospace", fontSize: 13 }}>{calc.totalSF.toLocaleString()}</td>
+                  </tr>
+                </tbody>
             </table>
 
-            {/* Metal Accessories */}
+            {/* 3. Metal Accessories */}
             <div style={{ marginBottom: 20 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: QS.text, marginBottom: 6 }}>Metal Accessories</div>
-              <div style={{ fontSize: 12, color: QS.muted, lineHeight: 1.8, paddingLeft: 12 }}>
-                {["Top and bottom angle or track", "Outside wall corners", "Inside wall corners",
-                  "Strapping for intersecting interior partitions", "Sealing spray foam", "Fasteners and assembly accessories"
-                ].map((item, i) => <div key={i}>- {item}</div>)}
-              </div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: QS.navy, marginBottom: 8 }}>3. Metal Accessories</div>
+              <ul style={{ paddingLeft: 20, fontSize: 12, color: QS.text, lineHeight: 1.7, margin: 0, listStyleType: "disc" }}>
+                <li style={{ marginBottom: 6 }}>Top and bottom angle or track as required.</li>
+                <li style={{ marginBottom: 6 }}>Outside and inside wall corners.</li>
+                <li style={{ marginBottom: 6 }}>Strapping for connection of intersecting interior partitions.</li>
+                <li style={{ marginBottom: 6 }}>Three 20-pound cans of sealing spray foam.</li>
+                <li style={{ marginBottom: 6 }}>All fasteners and assembly accessories.</li>
+              </ul>
             </div>
 
-            {/* Additional Services */}
+            {/* 4. Additional Services */}
             <div style={{ marginBottom: 32 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: QS.text, marginBottom: 6 }}>Additional Services</div>
-              <div style={{ fontSize: 12, color: QS.muted, lineHeight: 1.8, paddingLeft: 12 }}>
-                - Delivery to job site<br />
-                - Technical support during field assembly
-              </div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: QS.navy, marginBottom: 8 }}>4. Additional Services</div>
+              <ul style={{ paddingLeft: 20, fontSize: 12, color: QS.text, lineHeight: 1.7, margin: 0, listStyleType: "disc" }}>
+                <li style={{ marginBottom: 6 }}>On-site panel installation consultation as required.</li>
+                <li style={{ marginBottom: 6 }}>Delivery of all panels to the client's construction site.</li>
+              </ul>
             </div>
 
             {/* ── Totals Block ── */}
@@ -1305,44 +1354,115 @@ function QuoteOutput({ calc, proj, comps, pricing, misc, margin }) {
 
             {/* ── Exclusions ── */}
             <div style={sectionHead()}>Exclusions</div>
-            <div style={{ fontSize: 12, color: QS.muted, lineHeight: 1.8, paddingLeft: 12, marginBottom: 32 }}>
+            <div style={{ fontSize: 12, color: QS.text, lineHeight: 1.8, paddingLeft: 0, marginBottom: 32 }}>
               {[
-                "Window and door units (openings provided, units by others)",
-                "Site foundations (by others)",
-                "Field assembly labor (by others)",
-                "Second top plate (by others)",
-                "Interior / exterior finishes",
-                "Permits and inspections",
-              ].map((item, i) => <div key={i} style={{ paddingLeft: 8, textIndent: -8 }}>{"\u2014"} {item}</div>)}
+                "Common wall materials between the front and rear sections of the structure.",
+                "Beams, trusses, columns, and structural sheathing for roof truss ends and sides.",
+                "Second top plate \u2014 to be supplied and installed by others.",
+                "Window and door units \u2014 openings will be factory installed; units furnished by others.",
+                "Field assembly labor \u2014 panels shipped in component form for assembly by others.",
+                "Foundations \u2014 to be prepared by others.",
+                "All other building materials not explicitly listed in this proposal.",
+              ].map((item, i) => <div key={i} style={{ paddingLeft: 20, position: "relative" }}><span style={{ position: "absolute", left: 0, color: QS.muted }}>{"\u2014"}</span> {item}</div>)}
             </div>
 
             {/* ── Terms & Conditions ── */}
             <div style={sectionHead()}>Terms &amp; Conditions</div>
-            <div style={{ fontSize: 11, color: QS.muted, lineHeight: 1.7, marginBottom: 32 }}>
-              <p style={{ marginBottom: 8 }}>1. This proposal is valid for 30 days from the date shown above.</p>
-              <p style={{ marginBottom: 8 }}>2. Pricing is based on scope described herein. Changes to scope may result in price adjustment.</p>
-              <p style={{ marginBottom: 8 }}>3. Production lead time to be established upon receipt of signed contract and initial deposit.</p>
-              <p style={{ marginBottom: 8 }}>4. Guardian Structural Technologies LLC warrants panels against defects in materials and workmanship for a period of one (1) year from date of shipment.</p>
-              <p>5. Price subject to final drawings approval.</p>
+            <div style={{ fontSize: 12, color: QS.text, lineHeight: 1.75, marginBottom: 32 }}>
+              <p style={{ marginBottom: 8 }}>This proposal is subject to execution of a mutually agreeable Purchase Agreement based on final drawings and specifications.</p>
+              <p style={{ marginBottom: 8 }}>Client to supply final architectural working plans and specifications prior to the commencement of fabrication. Pricing is based on current specifications provided by the client and is subject to revision upon receipt of final plans.</p>
+              <p><strong>Client prerequisites prior to commencement:</strong> (a) Executed Purchase Agreement; (b) Guardian documents completed as requested; (c) Credit Application, if requested by Guardian; (d) Payments per the schedule above.</p>
             </div>
 
-            {/* ── Signature Blocks ── */}
+            {/* ── Notes ── */}
+            <div style={sectionHead()}>Notes</div>
+            <div className="no-print" style={{ marginBottom: 12 }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: QS.muted, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>Quick Insert</div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 10 }}>
+                {NOTE_TEMPLATES.map((t, i) => (
+                  <button key={i} onClick={() => addNote(t)}
+                    style={{ padding: "4px 10px", fontSize: 11, background: QS.bg, border: `1px solid ${QS.rule}`, borderRadius: 4,
+                      color: QS.text, cursor: "pointer", lineHeight: 1.4, textAlign: "left", maxWidth: 300 }}>
+                    {t.slice(0, 60)}{t.length > 60 ? "..." : ""}
+                  </button>
+                ))}
+              </div>
+              <textarea value={quoteNotes} onChange={e => setQuoteNotes(e.target.value)}
+                placeholder="Add notes to this proposal..."
+                style={{ width: "100%", minHeight: 80, padding: "10px 12px", fontSize: 12, fontFamily: "inherit",
+                  border: `1px solid ${QS.rule}`, borderRadius: 4, color: QS.text, lineHeight: 1.6, resize: "vertical", outline: "none" }} />
+            </div>
+            {quoteNotes && (
+              <div style={{ fontSize: 12, color: QS.text, lineHeight: 1.75, marginBottom: 32, whiteSpace: "pre-wrap" }}>
+                {quoteNotes}
+              </div>
+            )}
+
+            {/* ── Attachments ── */}
+            <div style={sectionHead()}>Attachments</div>
+            <div className="no-print" style={{ marginBottom: 12 }}>
+              <label style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "8px 16px", fontSize: 12, fontWeight: 600,
+                background: QS.bg, border: `1px solid ${QS.rule}`, borderRadius: 4, cursor: "pointer", color: QS.text }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>
+                Attach Drawings / Documents
+                <input type="file" multiple accept=".pdf,.dwg,.dxf,.png,.jpg,.jpeg,.tif,.tiff" style={{ display: "none" }} onChange={handleFileAttach} />
+              </label>
+              <span style={{ fontSize: 11, color: QS.muted, marginLeft: 12 }}>PDF, DWG, DXF, Images</span>
+            </div>
+            {attachments.length > 0 && (
+              <div style={{ marginBottom: 32 }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                  <thead>
+                    <tr style={{ background: QS.bg }}>
+                      <th style={{ padding: "8px 12px", textAlign: "left", fontSize: 10, fontWeight: 700, color: QS.muted, textTransform: "uppercase", letterSpacing: 1, borderBottom: `1px solid ${QS.rule}` }}>File</th>
+                      <th style={{ padding: "8px 12px", textAlign: "right", fontSize: 10, fontWeight: 700, color: QS.muted, textTransform: "uppercase", letterSpacing: 1, borderBottom: `1px solid ${QS.rule}` }}>Size</th>
+                      <th className="no-print" style={{ padding: "8px 12px", width: 40, borderBottom: `1px solid ${QS.rule}` }}></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {attachments.map((a, i) => (
+                      <tr key={i} style={{ borderBottom: `1px solid ${QS.rule}` }}>
+                        <td style={{ padding: "8px 12px" }}>
+                          <a href={a.url} target="_blank" rel="noopener noreferrer" style={{ color: QS.accent, textDecoration: "none", fontWeight: 500 }}>
+                            {a.name}
+                          </a>
+                        </td>
+                        <td style={{ padding: "8px 12px", textAlign: "right", color: QS.muted }}>{a.size}</td>
+                        <td className="no-print" style={{ padding: "8px 12px", textAlign: "center" }}>
+                          <button onClick={() => removeAttachment(i)} style={{ background: "none", border: "none", color: "#EF4444", cursor: "pointer", fontSize: 14 }}>✕</button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            {attachments.length === 0 && (
+              <div style={{ fontSize: 12, color: QS.muted, fontStyle: "italic", marginBottom: 32 }}>No attachments.</div>
+            )}
+
+            {/* ── Acceptance / Signature Blocks ── */}
+            <div style={sectionHead()}>Acceptance</div>
             <div style={{ display: "flex", gap: 40, marginBottom: 32 }}>
               {/* Guardian side */}
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: QS.text, textTransform: "uppercase", letterSpacing: 1, marginBottom: 16 }}>Guardian Structural Technologies LLC</div>
-                <div style={{ borderBottom: `1px solid ${QS.navy}`, marginBottom: 6, paddingBottom: 28 }} />
-                <div style={{ fontSize: 10, color: QS.muted }}>Authorized Signature</div>
-                <div style={{ borderBottom: `1px solid ${QS.rule}`, marginBottom: 6, marginTop: 16, paddingBottom: 28 }} />
-                <div style={{ fontSize: 10, color: QS.muted }}>Date</div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: QS.navy, textTransform: "uppercase", letterSpacing: 1.5, paddingBottom: 8, borderBottom: `2px solid ${QS.navy}`, marginBottom: 20 }}>Guardian Structural Technologies LLC</div>
+                <div style={{ borderBottom: `1px solid ${QS.rule}`, marginBottom: 4, paddingBottom: 28 }} />
+                <div style={{ fontSize: 10, fontWeight: 600, color: QS.muted, textTransform: "uppercase", letterSpacing: 1, marginBottom: 20 }}>Authorized Signature</div>
+                <div style={{ borderBottom: `1px solid ${QS.rule}`, marginBottom: 4, paddingBottom: 28 }} />
+                <div style={{ fontSize: 10, fontWeight: 600, color: QS.muted, textTransform: "uppercase", letterSpacing: 1, marginBottom: 20 }}>Printed Name &amp; Title</div>
+                <div style={{ borderBottom: `1px solid ${QS.rule}`, marginBottom: 4, paddingBottom: 28 }} />
+                <div style={{ fontSize: 10, fontWeight: 600, color: QS.muted, textTransform: "uppercase", letterSpacing: 1 }}>Date</div>
               </div>
               {/* Client side */}
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: QS.text, textTransform: "uppercase", letterSpacing: 1, marginBottom: 16 }}>{proj.ownerName || "Client"}</div>
-                <div style={{ borderBottom: `1px solid ${QS.navy}`, marginBottom: 6, paddingBottom: 28 }} />
-                <div style={{ fontSize: 10, color: QS.muted }}>Authorized Signature</div>
-                <div style={{ borderBottom: `1px solid ${QS.rule}`, marginBottom: 6, marginTop: 16, paddingBottom: 28 }} />
-                <div style={{ fontSize: 10, color: QS.muted }}>Date</div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: QS.navy, textTransform: "uppercase", letterSpacing: 1.5, paddingBottom: 8, borderBottom: `2px solid ${QS.navy}`, marginBottom: 20 }}>Client</div>
+                <div style={{ borderBottom: `1px solid ${QS.rule}`, marginBottom: 4, paddingBottom: 28 }} />
+                <div style={{ fontSize: 10, fontWeight: 600, color: QS.muted, textTransform: "uppercase", letterSpacing: 1, marginBottom: 20 }}>Authorized Signature</div>
+                <div style={{ borderBottom: `1px solid ${QS.rule}`, marginBottom: 4, paddingBottom: 28 }} />
+                <div style={{ fontSize: 10, fontWeight: 600, color: QS.muted, textTransform: "uppercase", letterSpacing: 1, marginBottom: 20 }}>Printed Name &amp; Title</div>
+                <div style={{ borderBottom: `1px solid ${QS.rule}`, marginBottom: 4, paddingBottom: 28 }} />
+                <div style={{ fontSize: 10, fontWeight: 600, color: QS.muted, textTransform: "uppercase", letterSpacing: 1 }}>Date</div>
               </div>
             </div>
 
@@ -1350,8 +1470,8 @@ function QuoteOutput({ calc, proj, comps, pricing, misc, margin }) {
 
           {/* ── Dark Footer ── */}
           <div style={{ background: QS.navy, padding: "16px 40px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <div style={{ fontSize: 11, color: "#8B9DAF" }}>Guardian Structural Technologies LLC</div>
-            <div style={{ fontSize: 11, color: "#8B9DAF" }}>4640 Manufacturing Avenue, Cleveland, OH 44135 &nbsp;|&nbsp; (216) 898-5600</div>
+            <div style={{ fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,0.5)" }}>Guardian Structural Technologies LLC — <span style={{ color: QS.accentLt }}>SHIELD™ Panel Systems</span></div>
+            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)" }}>Proposal No. {quoteId} · Page 1 of 1</div>
           </div>
 
         </div>
