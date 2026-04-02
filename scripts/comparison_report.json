@@ -1,0 +1,1055 @@
+[
+  {
+    "client": "Bridge Of Grace",
+    "file": "Cost Estimate   Bridge of Grace Fort Wayne   Triplex    12.4.25.xlsx",
+    "sheets": 17,
+    "contractValue": 76538.41514025921,
+    "activeComponents": [
+      "walls",
+      "windows",
+      "doors",
+      "gables",
+      "gableRoof"
+    ],
+    "componentTotals": {
+      "walls": {
+        "material": 15575.4837,
+        "labor": 3221.38
+      },
+      "windows": {
+        "material": 3772.0620000000004,
+        "labor": 2882.4864999999995
+      },
+      "doors": {
+        "material": 413.63910000000004,
+        "labor": 213.52323809523807
+      },
+      "gables": {
+        "material": 2422.004744896785,
+        "labor": 1049.9598571428571
+      },
+      "gableRoof": {
+        "material": 13956.31781216815,
+        "labor": 2438.967642857142
+      }
+    },
+    "hasRoofSheets": {
+      "gableRoof": true,
+      "hipRoof": true,
+      "singleSlope": true,
+      "gables": true
+    }
+  },
+  {
+    "client": "Canton Hotel",
+    "file": "Cost estimate Canton Hotel Curtain walls and roof  2.27.26.xlsx",
+    "sheets": 17,
+    "contractValue": 690302.4595526413,
+    "activeComponents": [
+      "walls",
+      "windows",
+      "singleSlope"
+    ],
+    "componentTotals": {
+      "walls": {
+        "material": 180038.512171875,
+        "labor": 37238.39095238095
+      },
+      "windows": {
+        "material": 31358.879999999997,
+        "labor": 17791.097999999998
+      },
+      "singleSlope": {
+        "material": 113294.965875,
+        "labor": 30419.571642857143
+      }
+    },
+    "hasRoofSheets": {
+      "gableRoof": true,
+      "hipRoof": true,
+      "singleSlope": true,
+      "gables": true
+    }
+  },
+  {
+    "client": "Canton Hotel",
+    "file": "GUARDIAN - Estimating Work sheet 9-24-2025.xlsx",
+    "sheets": 17,
+    "contractValue": 3907.1428571428573,
+    "activeComponents": [],
+    "componentTotals": {},
+    "hasRoofSheets": {
+      "gableRoof": true,
+      "hipRoof": true,
+      "singleSlope": true,
+      "gables": true
+    }
+  },
+  {
+    "client": "Carlson Ranch",
+    "file": "GUARDIAN - Estimating Work sheet 9-24-2025.xlsx",
+    "sheets": 17,
+    "contractValue": 3907.1428571428573,
+    "activeComponents": [],
+    "componentTotals": {},
+    "hasRoofSheets": {
+      "gableRoof": true,
+      "hipRoof": true,
+      "singleSlope": true,
+      "gables": true
+    }
+  },
+  {
+    "client": "Cipolla, Brian",
+    "file": "Cost estimate Cipolla Custom                         6.16.25.xlsx",
+    "sheets": 16,
+    "contractValue": 62821.50561101684,
+    "activeComponents": [
+      "walls",
+      "windows",
+      "doors",
+      "gables",
+      "gableRoof"
+    ],
+    "componentTotals": {
+      "walls": {
+        "material": 12729.04565625,
+        "labor": 2972.8314583333326
+      },
+      "windows": {
+        "material": 1555.4668499999998,
+        "labor": 1004.6964618055554
+      },
+      "doors": {
+        "material": 163.80210000000005,
+        "labor": 111.63593055555553
+      },
+      "gables": {
+        "material": 1155.4719014277491,
+        "labor": 802.3092395833332
+      },
+      "gableRoof": {
+        "material": 10095.5887229355,
+        "labor": 4753.112357638887
+      }
+    },
+    "hasRoofSheets": {
+      "gableRoof": true,
+      "hipRoof": true,
+      "singleSlope": true,
+      "gables": true
+    }
+  },
+  {
+    "client": "Dalton Classrooms",
+    "file": "Cost Estimate  Classroom Dalton  LA    12.2.25.xlsx",
+    "sheets": 17,
+    "contractValue": 39555.05749888392,
+    "activeComponents": [
+      "walls",
+      "windows",
+      "doors",
+      "singleSlope"
+    ],
+    "componentTotals": {
+      "walls": {
+        "material": 6494.147756250001,
+        "labor": 1413.5361904761903
+      },
+      "windows": {
+        "material": 2035.4205,
+        "labor": 1372.6126190476189
+      },
+      "doors": {
+        "material": 582.4307999999999,
+        "labor": 266.90404761904756
+      },
+      "singleSlope": {
+        "material": 9414.127800000002,
+        "labor": 2068.4162857142856
+      }
+    },
+    "hasRoofSheets": {
+      "gableRoof": true,
+      "hipRoof": true,
+      "singleSlope": true,
+      "gables": true
+    }
+  },
+  {
+    "client": "Deerfield - Aldi",
+    "file": "GUARDIAN - Estimating Work sheet 9-24-2025.xlsx",
+    "sheets": 17,
+    "contractValue": 3907.1428571428573,
+    "activeComponents": [],
+    "componentTotals": {},
+    "hasRoofSheets": {
+      "gableRoof": true,
+      "hipRoof": true,
+      "singleSlope": true,
+      "gables": true
+    }
+  },
+  {
+    "client": "DOC Cabins",
+    "file": "Cost estimate  DOC Cabin      12.3.25.xlsx",
+    "sheets": 17,
+    "contractValue": 33956.34917232664,
+    "activeComponents": [
+      "walls",
+      "windows",
+      "doors",
+      "gables",
+      "boxBeams",
+      "gableRoof"
+    ],
+    "componentTotals": {
+      "walls": {
+        "material": 5376.644175,
+        "labor": 1288.4490476190474
+      },
+      "windows": {
+        "material": 606.5831999999998,
+        "labor": 549.0450476190475
+      },
+      "doors": {
+        "material": 175.27439999999999,
+        "labor": 106.76161904761904
+      },
+      "gables": {
+        "material": 736.6081724483922,
+        "labor": 524.9799285714286
+      },
+      "boxBeams": {
+        "material": 588.03045,
+        "labor": 185.3142857142857
+      },
+      "gableRoof": {
+        "material": 7795.056894252428,
+        "labor": 1469.5422857142855
+      }
+    },
+    "hasRoofSheets": {
+      "gableRoof": true,
+      "hipRoof": true,
+      "singleSlope": true,
+      "gables": true
+    }
+  },
+  {
+    "client": "FLECK MEDICAL BUILDING",
+    "file": "Cost Estimate Fleck  Medical Center       11.13.25.xlsx",
+    "sheets": 17,
+    "contractValue": 102870.0799913113,
+    "activeComponents": [
+      "walls",
+      "windows",
+      "doors",
+      "gables",
+      "gableRoof"
+    ],
+    "componentTotals": {
+      "walls": {
+        "material": 12120.344249999998,
+        "labor": 2471.3719047619043
+      },
+      "windows": {
+        "material": 3164.1240000000007,
+        "labor": 2196.18019047619
+      },
+      "doors": {
+        "material": 382.4268,
+        "labor": 160.14242857142855
+      },
+      "gables": {
+        "material": 2606.5142046241717,
+        "labor": 1049.9598571428571
+      },
+      "gableRoof": {
+        "material": 26885.287818676854,
+        "labor": 4445.766928571427
+      }
+    },
+    "hasRoofSheets": {
+      "gableRoof": true,
+      "hipRoof": true,
+      "singleSlope": true,
+      "gables": true
+    }
+  },
+  {
+    "client": "FLECK MEDICAL BUILDING",
+    "file": "GUARDIAN - Estimating Work sheet 9-24-2025.xlsx",
+    "sheets": 17,
+    "contractValue": 3907.1428571428573,
+    "activeComponents": [],
+    "componentTotals": {},
+    "hasRoofSheets": {
+      "gableRoof": true,
+      "hipRoof": true,
+      "singleSlope": true,
+      "gables": true
+    }
+  },
+  {
+    "client": "Fuller Center",
+    "file": "Cost estimate Fuller ranch Miami   1.8.26.xlsx",
+    "sheets": 17,
+    "contractValue": 49320.59084165044,
+    "activeComponents": [
+      "walls",
+      "windows",
+      "doors",
+      "gables",
+      "gableRoof"
+    ],
+    "componentTotals": {
+      "walls": {
+        "material": 6674.13691875,
+        "labor": 1512.885238095238
+      },
+      "windows": {
+        "material": 1222.9944,
+        "labor": 1098.090095238095
+      },
+      "doors": {
+        "material": 299.9199,
+        "labor": 106.76161904761904
+      },
+      "gables": {
+        "material": 938.80250625,
+        "labor": 686.5122142857143
+      },
+      "gableRoof": {
+        "material": 11495.53299140624,
+        "labor": 1804.008833333333
+      }
+    },
+    "hasRoofSheets": {
+      "gableRoof": true,
+      "hipRoof": true,
+      "singleSlope": true,
+      "gables": true
+    }
+  },
+  {
+    "client": "Henderson, Joy",
+    "file": "Cost estimate Henderso.Joy Custom   5.7.25.xlsx",
+    "sheets": 15,
+    "contractValue": 55697.686567454984,
+    "activeComponents": [
+      "walls",
+      "windows",
+      "doors",
+      "gables",
+      "gableRoof"
+    ],
+    "componentTotals": {
+      "walls": {
+        "material": 6054.4574999999995,
+        "labor": 1221.0546666666664
+      },
+      "windows": {
+        "material": 2852.208,
+        "labor": 1897.1258666666663
+      },
+      "doors": {
+        "material": 316.4385,
+        "labor": 138.33579999999998
+      },
+      "gables": {
+        "material": 2474.097661974457,
+        "labor": 732.5661
+      },
+      "gableRoof": {
+        "material": 9533.432349662808,
+        "labor": 1586.7929999999997
+      }
+    },
+    "hasRoofSheets": {
+      "gableRoof": true,
+      "hipRoof": true,
+      "singleSlope": true,
+      "gables": true
+    }
+  },
+  {
+    "client": "Herrick Locker Room",
+    "file": "cost estimate  Herrick LockerRoom                              8.8.25.xlsx",
+    "sheets": 17,
+    "contractValue": 46253.129620179825,
+    "activeComponents": [
+      "walls",
+      "windows",
+      "doors",
+      "gables",
+      "singleSlope"
+    ],
+    "componentTotals": {
+      "walls": {
+        "material": 8899.349812500002,
+        "labor": 1945.1483333333333
+      },
+      "windows": {
+        "material": 1109.6514000000002,
+        "labor": 787.0619166666667
+      },
+      "doors": {
+        "material": 171.99375,
+        "labor": 204.05855555555553
+      },
+      "gables": {
+        "material": 720.9313887459803,
+        "labor": 733.2677916666667
+      },
+      "singleSlope": {
+        "material": 8719.6851,
+        "labor": 1976.7311666666667
+      }
+    },
+    "hasRoofSheets": {
+      "gableRoof": true,
+      "hipRoof": true,
+      "singleSlope": true,
+      "gables": true
+    }
+  },
+  {
+    "client": "JMC Homes",
+    "file": "Cost estimate JMC spec Sheffield Oh   3.23.26.xlsx",
+    "sheets": 17,
+    "contractValue": 87218.74193481528,
+    "activeComponents": [
+      "walls",
+      "windows",
+      "doors",
+      "gables",
+      "gableRoof",
+      "skylights"
+    ],
+    "componentTotals": {
+      "walls": {
+        "material": 9116.77396875,
+        "labor": 1881.4547619047617
+      },
+      "windows": {
+        "material": 4368.330000000001,
+        "labor": 3294.270285714286
+      },
+      "doors": {
+        "material": 362.4852,
+        "labor": 266.90404761904756
+      },
+      "gables": {
+        "material": 6920.274799591858,
+        "labor": 1574.9397857142858
+      },
+      "gableRoof": {
+        "material": 19259.469435634375,
+        "labor": 3339.389166666666
+      },
+      "skylights": {
+        "material": -76.05,
+        "labor": 185.3142857142857
+      }
+    },
+    "hasRoofSheets": {
+      "gableRoof": true,
+      "hipRoof": true,
+      "singleSlope": true,
+      "gables": true
+    }
+  },
+  {
+    "client": "JMC Homes",
+    "file": "GUARDIAN - Estimating Work sheet 3-3-26.xlsx",
+    "sheets": 17,
+    "contractValue": 3907.1428571428573,
+    "activeComponents": [],
+    "componentTotals": {},
+    "hasRoofSheets": {
+      "gableRoof": true,
+      "hipRoof": true,
+      "singleSlope": true,
+      "gables": true
+    }
+  },
+  {
+    "client": "Keehan, DJ, Hammer Addition",
+    "file": "GUARDIAN - Estimating Work sheet 5-1-2025.xlsx",
+    "sheets": 16,
+    "contractValue": 3907.1428571428573,
+    "activeComponents": [],
+    "componentTotals": {},
+    "hasRoofSheets": {
+      "gableRoof": true,
+      "hipRoof": true,
+      "singleSlope": true,
+      "gables": true
+    }
+  },
+  {
+    "client": "LaCentre",
+    "file": "Cost estimate  Lecentre Party center                               7.16.25.xlsx",
+    "sheets": 17,
+    "contractValue": 122613.62034188033,
+    "activeComponents": [
+      "walls"
+    ],
+    "componentTotals": {
+      "walls": {
+        "material": 52444.56,
+        "labor": 6258.517222222223
+      }
+    },
+    "hasRoofSheets": {
+      "gableRoof": true,
+      "hipRoof": true,
+      "singleSlope": true,
+      "gables": true
+    }
+  },
+  {
+    "client": "Markatos, Chris",
+    "file": "COst estimate  Markatos Family Barn     1.9.26.xlsx",
+    "sheets": 17,
+    "contractValue": 357708.2966959354,
+    "activeComponents": [
+      "walls",
+      "windows",
+      "doors",
+      "gables",
+      "gableRoof"
+    ],
+    "componentTotals": {
+      "walls": {
+        "material": 64774.854112500005,
+        "labor": 9529.787142857142
+      },
+      "windows": {
+        "material": 6630.9588,
+        "labor": 1216.485333333333
+      },
+      "doors": {
+        "material": 221.67179999999996,
+        "labor": 160.14242857142855
+      },
+      "gables": {
+        "material": 8814.004532676252,
+        "labor": 3149.8795714285716
+      },
+      "gableRoof": {
+        "material": 93078.23223228891,
+        "labor": 16787.054904761902
+      }
+    },
+    "hasRoofSheets": {
+      "gableRoof": true,
+      "hipRoof": true,
+      "singleSlope": true,
+      "gables": true
+    }
+  },
+  {
+    "client": "Markatos, Chris",
+    "file": "Estimating  cost Sheet  Cobler  Custom   9.8.25.xlsx",
+    "sheets": 17,
+    "contractValue": 102092.61846642874,
+    "activeComponents": [
+      "walls",
+      "windows",
+      "doors",
+      "gables",
+      "boxBeams",
+      "gableRoof"
+    ],
+    "componentTotals": {
+      "walls": {
+        "material": 12917.371687500003,
+        "labor": 2317.4580952380948
+      },
+      "windows": {
+        "material": 3349.5792,
+        "labor": 2208.9462857142853
+      },
+      "doors": {
+        "material": 221.67179999999996,
+        "labor": 160.14242857142855
+      },
+      "gables": {
+        "material": 4342.057814543586,
+        "labor": 1292.2582857142856
+      },
+      "boxBeams": {
+        "material": 2266.2024,
+        "labor": 741.2571428571428
+      },
+      "gableRoof": {
+        "material": 27680.91236233945,
+        "labor": 3576.153904761904
+      }
+    },
+    "hasRoofSheets": {
+      "gableRoof": true,
+      "hipRoof": true,
+      "singleSlope": true,
+      "gables": true
+    }
+  },
+  {
+    "client": "MASON BUILDERS, Sacramento",
+    "file": "GUARDIAN - Estimating Work sheet 9-24-2025.xlsx",
+    "sheets": 17,
+    "contractValue": 3907.1428571428573,
+    "activeComponents": [],
+    "componentTotals": {},
+    "hasRoofSheets": {
+      "gableRoof": true,
+      "hipRoof": true,
+      "singleSlope": true,
+      "gables": true
+    }
+  },
+  {
+    "client": "McNeely Duplex",
+    "file": "Cost estimate Mcneely Duplex    123.26.xlsx",
+    "sheets": 17,
+    "contractValue": 100402.97571227157,
+    "activeComponents": [
+      "walls",
+      "windows",
+      "doors",
+      "gables",
+      "gableRoof"
+    ],
+    "componentTotals": {
+      "walls": {
+        "material": 18128.587443750002,
+        "labor": 4016.17238095238
+      },
+      "windows": {
+        "material": 2645.1528,
+        "labor": 2196.18019047619
+      },
+      "doors": {
+        "material": 837.2322,
+        "labor": 373.6656666666666
+      },
+      "gables": {
+        "material": 3694.375687941276,
+        "labor": 1251.8752142857143
+      },
+      "gableRoof": {
+        "material": 20080.111953978016,
+        "labor": 3809.752857142856
+      }
+    },
+    "hasRoofSheets": {
+      "gableRoof": true,
+      "hipRoof": true,
+      "singleSlope": true,
+      "gables": true
+    }
+  },
+  {
+    "client": "McNeely Duplex",
+    "file": "GUARDIAN - Estimating Work sheet 9-24-2025.xlsx",
+    "sheets": 17,
+    "contractValue": 3907.1428571428573,
+    "activeComponents": [],
+    "componentTotals": {},
+    "hasRoofSheets": {
+      "gableRoof": true,
+      "hipRoof": true,
+      "singleSlope": true,
+      "gables": true
+    }
+  },
+  {
+    "client": "South Bend",
+    "file": "Cost Estimate   The stacked Duplex       8.12.25.xlsx",
+    "sheets": 17,
+    "contractValue": 57438.586592289736,
+    "activeComponents": [
+      "walls",
+      "windows",
+      "doors",
+      "gables",
+      "gableRoof"
+    ],
+    "componentTotals": {
+      "walls": {
+        "material": 11265.734025000002,
+        "labor": 2472.020833333333
+      },
+      "windows": {
+        "material": 3471.7630499999996,
+        "labor": 2754.7167083333334
+      },
+      "doors": {
+        "material": 209.81939999999997,
+        "labor": 153.04391666666666
+      },
+      "gables": {
+        "material": 1032.1432296932314,
+        "labor": 578.895625
+      },
+      "gableRoof": {
+        "material": 8480.132834961929,
+        "labor": 4344.090819444444
+      }
+    },
+    "hasRoofSheets": {
+      "gableRoof": true,
+      "hipRoof": true,
+      "singleSlope": true,
+      "gables": true
+    }
+  },
+  {
+    "client": "South Bend",
+    "file": "Cost estimate  6 plex   8.13.25.xlsx",
+    "sheets": 17,
+    "contractValue": 106290.60366383372,
+    "activeComponents": [
+      "walls",
+      "windows",
+      "doors",
+      "gables",
+      "singleSlope"
+    ],
+    "componentTotals": {
+      "walls": {
+        "material": 18624.593925,
+        "labor": 4022.1377777777775
+      },
+      "windows": {
+        "material": 6825.636,
+        "labor": 4984.725472222222
+      },
+      "doors": {
+        "material": 238.41929999999996,
+        "labor": 153.04391666666666
+      },
+      "gables": {
+        "material": 1335.4617312086039,
+        "labor": 617.4886666666667
+      },
+      "singleSlope": {
+        "material": 19022.498250000004,
+        "labor": 5342.147708333333
+      }
+    },
+    "hasRoofSheets": {
+      "gableRoof": true,
+      "hipRoof": true,
+      "singleSlope": true,
+      "gables": true
+    }
+  },
+  {
+    "client": "South Bend",
+    "file": "Cost estimate  Narrow House 3Bed    south bend  8.11.25.xlsx",
+    "sheets": 17,
+    "contractValue": 61535.07881179944,
+    "activeComponents": [
+      "walls",
+      "windows",
+      "doors",
+      "gables",
+      "gableRoof"
+    ],
+    "componentTotals": {
+      "walls": {
+        "material": 10697.30445,
+        "labor": 2404.624444444444
+      },
+      "windows": {
+        "material": 3802.40715,
+        "labor": 3017.0706805555556
+      },
+      "doors": {
+        "material": 209.81939999999997,
+        "labor": 153.04391666666666
+      },
+      "gables": {
+        "material": 1008.5222586725884,
+        "labor": 771.8608333333334
+      },
+      "gableRoof": {
+        "material": 8321.026199526113,
+        "labor": 5111.22898611111
+      }
+    },
+    "hasRoofSheets": {
+      "gableRoof": true,
+      "hipRoof": true,
+      "singleSlope": true,
+      "gables": true
+    }
+  },
+  {
+    "client": "South Bend",
+    "file": "Cost estimate  Standard House  3 bed Room    8.11.25.xlsx",
+    "sheets": 17,
+    "contractValue": 64883.47339377777,
+    "activeComponents": [
+      "walls",
+      "windows",
+      "doors",
+      "gables",
+      "gableRoof"
+    ],
+    "componentTotals": {
+      "walls": {
+        "material": 15034.098187500003,
+        "labor": 3348.173888888889
+      },
+      "windows": {
+        "material": 2975.7969,
+        "labor": 2361.1857499999996
+      },
+      "doors": {
+        "material": 209.81939999999997,
+        "labor": 153.04391666666666
+      },
+      "gables": {
+        "material": 894.0135869380707,
+        "labor": 617.4886666666667
+      },
+      "gableRoof": {
+        "material": 7672.089381062831,
+        "labor": 3193.383569444444
+      }
+    },
+    "hasRoofSheets": {
+      "gableRoof": true,
+      "hipRoof": true,
+      "singleSlope": true,
+      "gables": true
+    }
+  },
+  {
+    "client": "South Bend",
+    "file": "Cost Estimate Carrarige House ADU                                 8.8.25.xlsx",
+    "sheets": 17,
+    "contractValue": 53187.73848424208,
+    "activeComponents": [
+      "walls",
+      "windows",
+      "doors",
+      "gables",
+      "gableRoof"
+    ],
+    "componentTotals": {
+      "walls": {
+        "material": 13205.856300000003,
+        "labor": 2741.6063888888884
+      },
+      "windows": {
+        "material": 1796.2200000000003,
+        "labor": 1311.7698611111111
+      },
+      "doors": {
+        "material": 238.41929999999996,
+        "labor": 153.04391666666666
+      },
+      "gables": {
+        "material": 1335.4617312086039,
+        "labor": 617.4886666666667
+      },
+      "gableRoof": {
+        "material": 5961.4082798363415,
+        "labor": 1563.7192083333332
+      }
+    },
+    "hasRoofSheets": {
+      "gableRoof": true,
+      "hipRoof": true,
+      "singleSlope": true,
+      "gables": true
+    }
+  },
+  {
+    "client": "South Bend",
+    "file": "Cost Estimate Standard house 4 bed                       8.12.25.xlsx",
+    "sheets": 17,
+    "contractValue": 63168.72663596559,
+    "activeComponents": [
+      "walls",
+      "windows",
+      "doors",
+      "gables",
+      "gableRoof"
+    ],
+    "componentTotals": {
+      "walls": {
+        "material": 12326.637881250004,
+        "labor": 2809.0027777777777
+      },
+      "windows": {
+        "material": 3141.11895,
+        "labor": 2492.362736111111
+      },
+      "doors": {
+        "material": 314.72909999999996,
+        "labor": 204.05855555555553
+      },
+      "gables": {
+        "material": 1142.7034619380706,
+        "labor": 810.4538750000002
+      },
+      "gableRoof": {
+        "material": 10716.958079076474,
+        "labor": 4117.820972222222
+      }
+    },
+    "hasRoofSheets": {
+      "gableRoof": true,
+      "hipRoof": true,
+      "singleSlope": true,
+      "gables": true
+    }
+  },
+  {
+    "client": "South Bend",
+    "file": "GUARDIAN - Estimating Work sheet 7-1-2025.xlsx",
+    "sheets": 17,
+    "contractValue": 53187.73848424208,
+    "activeComponents": [
+      "walls",
+      "windows",
+      "doors",
+      "gables",
+      "gableRoof"
+    ],
+    "componentTotals": {
+      "walls": {
+        "material": 13205.856300000003,
+        "labor": 2741.6063888888884
+      },
+      "windows": {
+        "material": 1796.2200000000003,
+        "labor": 1311.7698611111111
+      },
+      "doors": {
+        "material": 238.41929999999996,
+        "labor": 153.04391666666666
+      },
+      "gables": {
+        "material": 1335.4617312086039,
+        "labor": 617.4886666666667
+      },
+      "gableRoof": {
+        "material": 5961.4082798363415,
+        "labor": 1563.7192083333332
+      }
+    },
+    "hasRoofSheets": {
+      "gableRoof": true,
+      "hipRoof": true,
+      "singleSlope": true,
+      "gables": true
+    }
+  },
+  {
+    "client": "Stone Creek CG",
+    "file": "Cost estimate  Stone creek  Apts      2.6.26.xlsx",
+    "sheets": 17,
+    "contractValue": 321860.7918210565,
+    "activeComponents": [
+      "walls",
+      "windows",
+      "boxBeams"
+    ],
+    "componentTotals": {
+      "walls": {
+        "material": 130215.41071875,
+        "labor": 20280.074761904758
+      },
+      "windows": {
+        "material": 31084.325999999997,
+        "labor": 16607.145619047616
+      },
+      "boxBeams": {
+        "material": 1068.1335,
+        "labor": 2501.742857142857
+      }
+    },
+    "hasRoofSheets": {
+      "gableRoof": true,
+      "hipRoof": true,
+      "singleSlope": true,
+      "gables": true
+    }
+  },
+  {
+    "client": "Stone Creek CG",
+    "file": "GUARDIAN - Estimating Work sheet 9-24-2025.xlsx",
+    "sheets": 17,
+    "contractValue": 3907.1428571428573,
+    "activeComponents": [],
+    "componentTotals": {},
+    "hasRoofSheets": {
+      "gableRoof": true,
+      "hipRoof": true,
+      "singleSlope": true,
+      "gables": true
+    }
+  },
+  {
+    "client": "Stover, Tyra",
+    "file": "Cost estimate Tyra Colonial           10.7.25.xlsx",
+    "sheets": 17,
+    "contractValue": 62822.92012301844,
+    "activeComponents": [
+      "walls",
+      "windows",
+      "doors",
+      "gables",
+      "gableRoof"
+    ],
+    "componentTotals": {
+      "walls": {
+        "material": 12694.934700000002,
+        "labor": 2801.334285714285
+      },
+      "windows": {
+        "material": 3306.441,
+        "labor": 2745.2252380952377
+      },
+      "doors": {
+        "material": 314.72909999999996,
+        "labor": 213.52323809523807
+      },
+      "gables": {
+        "material": 1215.3135869380708,
+        "labor": 646.1291428571428
+      },
+      "gableRoof": {
+        "material": 8101.230399058576,
+        "labor": 1402.648976190476
+      }
+    },
+    "hasRoofSheets": {
+      "gableRoof": true,
+      "hipRoof": true,
+      "singleSlope": true,
+      "gables": true
+    }
+  },
+  {
+    "client": "Test",
+    "file": "GUARDIAN - Estimating Work sheet 3-3-26.xlsx",
+    "sheets": 17,
+    "contractValue": 3907.1428571428573,
+    "activeComponents": [],
+    "componentTotals": {},
+    "hasRoofSheets": {
+      "gableRoof": true,
+      "hipRoof": true,
+      "singleSlope": true,
+      "gables": true
+    }
+  }
+]
