@@ -2167,7 +2167,7 @@ function SettingsTab({ settings, onUpdateSettings, pricing, onUpdatePricing }) {
   );
 }
 
-function JobPicker({ jobs, activeJobId, onSelect, onNew, onDelete, onExport, onExportAll, onImport, onImportExcel }) {
+function JobPicker({ jobs, activeJobId, onSelect, onNew, onDelete, onExport, onExportAll, onImport, onImportExcel, onUploadDrawing }) {
   return (
     <div className="bg-slate-800 px-4 py-1 flex items-center gap-2 text-xs border-b border-slate-700">
       <span className="text-slate-500 font-medium">Job:</span>
@@ -2187,6 +2187,10 @@ function JobPicker({ jobs, activeJobId, onSelect, onNew, onDelete, onExport, onE
       <label className="bg-amber-600 hover:bg-amber-500 text-white px-3 py-1 rounded text-xs cursor-pointer font-medium">
         Import Excel
         <input type="file" accept=".xlsx,.xls" className="hidden" onChange={onImportExcel} />
+      </label>
+      <label className="bg-purple-600 hover:bg-purple-500 text-white px-3 py-1 rounded text-xs cursor-pointer font-bold">
+        Upload Drawing
+        <input type="file" accept=".pdf,.png,.jpg,.jpeg,.tiff,.tif" className="hidden" onChange={onUploadDrawing} />
       </label>
       {jobs.length > 1 && (
         <button onClick={onDelete} className="bg-red-700 hover:bg-red-600 text-white px-3 py-1 rounded text-xs ml-auto">Delete Job</button>
@@ -2482,6 +2486,57 @@ export default function App() {
     setImportReview(null);
   }, [importReview]);
 
+  const handleUploadDrawing = useCallback((e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("projectId", activeJobId || "");
+
+    // Upload to drawing pipeline server
+    fetch("http://localhost:3001/api/upload", { method: "POST", body: formData })
+      .then(r => r.json())
+      .then(data => {
+        if (!data.jobId) { alert("Upload failed: " + (data.error || "Unknown error")); return; }
+        alert(`Drawing uploaded! Job ID: ${data.jobId}\nProcessing... Check back in 15-30 seconds.`);
+        // Poll for completion
+        const poll = setInterval(() => {
+          fetch(`http://localhost:3001/api/jobs/${data.jobId}`)
+            .then(r => r.json())
+            .then(status => {
+              if (status.status === "complete") {
+                clearInterval(poll);
+                fetch(`http://localhost:3001/api/jobs/${data.jobId}/result`)
+                  .then(r => r.json())
+                  .then(result => {
+                    if (result.formData?.comps) {
+                      // Merge extracted data into current job
+                      setComps(prev => {
+                        const next = { ...prev };
+                        Object.keys(result.formData.comps).forEach(k => {
+                          const extracted = result.formData.comps[k];
+                          if (!extracted || !extracted.length) return;
+                          next[k] = [...prev[k]];
+                          extracted.forEach((item, i) => {
+                            if (i < 5 && item.qty) next[k][i] = { ...prev[k][i], ...item };
+                          });
+                        });
+                        return next;
+                      });
+                      alert(`Drawing processed! ${(result.flags || []).length} items flagged for review.\n\nExtracted data has been loaded into the form.`);
+                    }
+                  }).catch(() => alert("Failed to load results."));
+              } else if (status.status === "error") {
+                clearInterval(poll);
+                alert("Drawing processing failed: " + (status.error || "Unknown error"));
+              }
+            }).catch(() => {});
+        }, 3000);
+      })
+      .catch(() => alert("Cannot connect to drawing pipeline server.\nMake sure it's running: cd gst-drawing-pipeline && npm start"));
+    e.target.value = "";
+  }, [activeJobId]);
+
   const handleTypeChange = useCallback((compKey, typeIdx, field, value) => {
     setQuoteOverride(false); // reset override when data changes
     setReviewedOnce(false); // require re-review when data changes
@@ -2634,6 +2689,7 @@ export default function App() {
         onExportAll={handleExportAllJobs}
         onImport={handleImportJob}
         onImportExcel={handleImportExcel}
+        onUploadDrawing={handleUploadDrawing}
       />
 
       {/* TICKER */}

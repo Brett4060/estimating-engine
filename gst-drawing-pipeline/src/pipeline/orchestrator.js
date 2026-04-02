@@ -6,6 +6,22 @@ const { detectHighlights } = require("./highlightDetector");
 const { extractGeometry } = require("./visionExtractor");
 const { mapToEstimatingForm } = require("./fieldMapper");
 
+/**
+ * Merge extraction results from multiple pages.
+ * Combines walls, windows, doors, gables from all pages.
+ */
+function mergeExtractions(extractions) {
+  const merged = { walls: [], windows: [], doors: [], gables: [], metadata: { notes: [], confidence: "medium" } };
+  for (const ext of extractions) {
+    if (ext.walls) merged.walls.push(...ext.walls);
+    if (ext.windows) merged.windows.push(...ext.windows);
+    if (ext.doors) merged.doors.push(...ext.doors);
+    if (ext.gables) merged.gables.push(...ext.gables);
+    if (ext.metadata?.notes) merged.metadata.notes.push(...ext.metadata.notes);
+  }
+  return merged;
+}
+
 // Image extensions we handle directly
 const IMAGE_EXTS = [".png", ".jpg", ".jpeg", ".tiff", ".tif"];
 const PDF_EXTS = [".pdf"];
@@ -46,20 +62,30 @@ async function processJob(jobId, filePath) {
       isPdf,
     });
 
+    // Collect pages to process
+    let pagesToProcess = [];
+
     if (isPdf) {
-      // PDF support is a phase 2 placeholder
-      writeStatus(jobId, {
-        jobId,
-        status: "error",
-        step: "detect_type",
-        error: "PDF processing not yet implemented. Please upload an image (PNG, JPG, TIFF).",
-        updatedAt: new Date().toISOString(),
-      });
-      logger.logStep("detect_type", "PDF support not yet implemented", null, null);
-      return;
+      // Step 2b: Rasterize PDF to page images
+      writeStatus(jobId, { jobId, status: "processing", step: "pdf_rasterize", updatedAt: new Date().toISOString() });
+      const { rasterizePdf } = require("./pdfRasterizer");
+      const pagesDir = getJobPath(jobId, "pages");
+      const rasterResult = await rasterizePdf(filePath, pagesDir);
+      const pageFiles = rasterResult.pages || [];
+      logger.logStep("pdf_rasterize", `Rasterized ${pageFiles.length} pages`, null, { pageCount: pageFiles.length });
+
+      if (pageFiles.length === 0) {
+        writeStatus(jobId, { jobId, status: "error", step: "pdf_rasterize", error: "No pages extracted from PDF.", updatedAt: new Date().toISOString() });
+        return;
+      }
+
+      // For MVP: process first 5 pages max (floor plans are usually near the front)
+      for (const pageFile of pageFiles.slice(0, 5)) {
+        pagesToProcess.push(path.join(pagesDir, pageFile));
+      }
     }
 
-    if (!isImage) {
+    if (!isImage && !isPdf) {
       writeStatus(jobId, {
         jobId,
         status: "error",
@@ -71,53 +97,39 @@ async function processJob(jobId, filePath) {
       return;
     }
 
-    // Step 3: highlight detection
-    writeStatus(jobId, {
-      jobId,
-      status: "processing",
-      step: "highlight_detection",
-      updatedAt: new Date().toISOString(),
-    });
+    // For single images, just process the one file
+    if (isImage) {
+      pagesToProcess.push(filePath);
+    }
 
+    // Step 3: process each page — highlight detection + vision extraction
     const overlaysDir = getJobPath(jobId, "overlays");
-    const highlightResult = await detectHighlights(filePath, overlaysDir);
-    logger.logStep(
-      "highlight_detection",
-      `Detected ${highlightResult.highlight_count} highlighted regions`,
-      null,
-      highlightResult
-    );
+    const allExtractions = [];
 
-    // Step 4: vision extraction
-    writeStatus(jobId, {
-      jobId,
-      status: "processing",
-      step: "vision_extraction",
-      updatedAt: new Date().toISOString(),
-    });
+    for (let pi = 0; pi < pagesToProcess.length; pi++) {
+      const pageImage = pagesToProcess[pi];
+      const pageLabel = pagesToProcess.length > 1 ? ` (page ${pi + 1}/${pagesToProcess.length})` : "";
 
-    // Use cleaned image if highlights were found, otherwise use original
-    const imageForVision =
-      highlightResult.highlight_count > 0 && highlightResult.cleaned_path
-        ? highlightResult.cleaned_path
-        : filePath;
+      // Highlight detection
+      writeStatus(jobId, { jobId, status: "processing", step: `highlight_detection${pageLabel}`, updatedAt: new Date().toISOString() });
+      const highlightResult = await detectHighlights(pageImage, overlaysDir);
+      logger.logStep("highlight_detection", `${pageLabel} Detected ${highlightResult.highlight_count} highlighted regions`, null, highlightResult);
 
-    const extractionResult = await extractGeometry(imageForVision, highlightResult);
-    logger.logStep(
-      "vision_extraction",
-      `Extracted ${(extractionResult.walls || []).length} walls, ${(extractionResult.windows || []).length} windows, ${(extractionResult.doors || []).length} doors`,
-      null,
-      { wallCount: (extractionResult.walls || []).length }
-    );
+      // Vision extraction
+      writeStatus(jobId, { jobId, status: "processing", step: `vision_extraction${pageLabel}`, updatedAt: new Date().toISOString() });
+      const imageForVision = highlightResult.highlight_count > 0 && highlightResult.cleaned_path ? highlightResult.cleaned_path : pageImage;
+      const extractionResult = await extractGeometry(imageForVision, highlightResult);
+      logger.logStep("vision_extraction", `${pageLabel} Extracted ${(extractionResult.walls || []).length} walls, ${(extractionResult.windows || []).length} windows`, null, { wallCount: (extractionResult.walls || []).length });
+
+      allExtractions.push(extractionResult);
+    }
+
+    // Merge extractions from all pages
+    const extractionResult = mergeExtractions(allExtractions);
+    logger.logStep("merge", `Merged ${allExtractions.length} page(s) of results`, null, null);
 
     // Step 5: field mapping
-    writeStatus(jobId, {
-      jobId,
-      status: "processing",
-      step: "field_mapping",
-      updatedAt: new Date().toISOString(),
-    });
-
+    writeStatus(jobId, { jobId, status: "processing", step: "field_mapping", updatedAt: new Date().toISOString() });
     const mapped = mapToEstimatingForm(extractionResult);
     logger.logStep(
       "field_mapping",
