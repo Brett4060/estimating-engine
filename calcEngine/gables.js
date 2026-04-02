@@ -19,11 +19,8 @@ export function calcGables(data, pricing) {
   let mat = 0;
 
   // ── Geometry ──
-  // Row 9: gableHeight = (rise/run) * (0.5 * gableLength)
   const gableHeight = (rise / run) * (0.5 * gableLen);
-  // Row 10: gableRun = SQRT(gableHeight² + (gableLength/2)²)
   const gableRun = Math.sqrt(gableHeight * gableHeight + (gableLen / 2) * (gableLen / 2));
-  // Row 13: SF = 0.5 * gableLength * gableHeight
   const sf = 0.5 * gableLen * gableHeight;
 
   // ── EPS ──
@@ -33,8 +30,6 @@ export function calcGables(data, pricing) {
   mat += addLineItem(lineItems, "EPS", epsBdFt, "BdFt", epsPrice);
 
   // ── INSIDE STUDS ──
-  // Row 20: count = gableLength/2
-  // Row 21: length = gableHeight/2 (AVERAGE height, not full)
   const insideIdx = n(data, "insideStudType");
   const insideCount = b(data, "insideStuds") ? gableLen / 2 : 0;
   const insideLenAvg = b(data, "insideStuds") ? gableHeight / 2 : 0;
@@ -88,6 +83,10 @@ export function calcGables(data, pricing) {
   const intSheathSF = b(data, "intSheathing") ? sf : 0;
   mat += addLineItem(lineItems, "Int Sheathing", intSheathSF, "SqFt", getPrice(pricing, "SHEATHING", intSheathIdx));
 
+  // ── WALL STRAPPING ──
+  const interiorWallCount = n(data, "interiorWallCount");
+  mat += addLineItem(lineItems, "Wall Strapping", interiorWallCount * 3, "Each", FIXED_PRICES.wallStrapping);
+
   // ── LIFT RINGS ──
   mat += addLineItem(lineItems, "Lift Rings", insideCount, "Each", FIXED_PRICES.liftRing);
 
@@ -96,7 +95,7 @@ export function calcGables(data, pricing) {
   const roofScrewQty = roundUp(outsideLenAvg / 3) * (outsideCount + beamSptTubes / 2);
   mat += addLineItem(lineItems, "Roof Drill Pt Screws", roofScrewQty, "Each", getPrice(pricing, "RSCREW", roofScrewIdx));
 
-  const waferQty = (insideCount + outsideCount + insideCount + n(data, "interiorWallCount") * 3) * 10;
+  const waferQty = (insideCount + outsideCount + insideCount + interiorWallCount * 3) * 10;
   mat += addLineItem(lineItems, "Wafer Head Screws", waferQty, "Each", FIXED_PRICES.waferHeadScrew);
 
   mat += addLineItem(lineItems, "Sheathing Fasteners", extSheathSF + intSheathSF, "Each", FIXED_PRICES.sheathingFastener);
